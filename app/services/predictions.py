@@ -14,6 +14,8 @@ def format_label(value: Any, target_name: str, predicted: bool = False) -> str:
 
     if target_name == "good_review":
         return f"{prefix}{'Good review' if numeric_value == 1 else 'Bad review'}"
+    if target_name == "HeartDisease":
+        return f"{prefix}{'Heart disease' if numeric_value == 1 else 'No heart disease'}"
     return f"{prefix}Class {numeric_value}"
 
 
@@ -43,9 +45,14 @@ def build_sample_predictions(
             if pd.notna(order_id):
                 item["order_id"] = str(order_id)
 
-        if probabilities is not None and target_name == "good_review":
+        if probabilities is not None and target_name in {"good_review", "HeartDisease"}:
             try:
-                item["probability_good_review"] = round(float(probabilities[position]), 4)
+                probability_key = (
+                    "probability_good_review"
+                    if target_name == "good_review"
+                    else "probability_heart_disease"
+                )
+                item[probability_key] = round(float(probabilities[position]), 4)
             except (TypeError, ValueError, IndexError):
                 pass
 

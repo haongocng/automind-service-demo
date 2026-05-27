@@ -218,12 +218,26 @@ def ecommerce_good_review_request(data: Optional[List[Dict[str, Any]]] = None) -
     )
 
 
+def heart_disease_request(data: Optional[List[Dict[str, Any]]] = None) -> PredictionRequest:
+    """Create the default Heart Disease classification request."""
+
+    return PredictionRequest(
+        data=data,
+        target_column="HeartDisease",
+        task_type="classification",
+        exclude_columns=[],
+        metadata={"source": "prepared-heart-disease-csv", "domain": "heart_disease"},
+    )
+
+
 def _class_distribution_for_target(y: pd.Series, target_name: str) -> List[Dict[str, Any]]:
     counts = y.value_counts().sort_index()
     items: List[Dict[str, Any]] = []
     for label, count in counts.items():
         if target_name == "good_review":
             name = "Good review" if int(label) == 1 else "Bad review"
+        elif target_name == "HeartDisease":
+            name = "Heart disease" if int(label) == 1 else "No heart disease"
         else:
             name = f"Class {label}"
         items.append({"label": name, "value": int(count)})
@@ -233,12 +247,16 @@ def _class_distribution_for_target(y: pd.Series, target_name: str) -> List[Dict[
 def _report_title(task_label: str) -> str:
     if task_label == "Good review prediction":
         return "AutoMind E-commerce Good Review Prediction Report"
+    if task_label == "Heart disease classification":
+        return "AutoMind Heart Disease Classification Report"
     return f"AutoMind {task_label} Report"
 
 
 def _target_definition(target_name: str, transform: TargetTransform | None) -> str:
     if target_name == "good_review":
         return "good_review = 1 if review_score >= 4 else 0"
+    if target_name == "HeartDisease":
+        return "HeartDisease = 1 indicates heart disease; 0 indicates no heart disease"
     if transform and transform.type == "binary_threshold":
         return f"{target_name} is derived using {transform.operator} {transform.threshold}"
     return f"Target column: {target_name}"

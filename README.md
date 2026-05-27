@@ -18,7 +18,7 @@ The demo endpoint predicts whether an e-commerce order receives a good review:
 good_review = 1 if review_score >= 4 else 0
 ```
 
-The core pipeline is generic and can be reused for future classification domains such as HeartDisease through `POST /predict`.
+The core pipeline is generic and now also includes a prepared Heart Disease classification demo through `POST /predict/heart-disease`.
 
 ## Setup
 
@@ -61,6 +61,41 @@ curl -X POST http://localhost:8000/predict/ecommerce-good-review \
   -H "Content-Type: application/json" \
   -d @examples/ecommerce_good_review_request.json
 ```
+
+
+## Run Heart Disease Classification Demo
+
+Prepared dataset files:
+
+```text
+examples/heart_disease/heart_train.csv
+examples/heart_disease/heart_test.csv
+```
+
+The training file contains labeled rows with target column:
+
+```text
+HeartDisease
+```
+
+Run the prepared demo:
+
+```bash
+curl -X POST http://localhost:8000/predict/heart-disease \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+This endpoint performs binary classification:
+
+```text
+0 = no heart disease
+1 = heart disease
+```
+
+Medical disclaimer: this workflow is for demonstration and research only. The output is not medical advice, diagnosis, treatment guidance, or a clinical decision system. Real clinical deployment would require expert validation, calibration, bias assessment, and regulatory review.
+
+For now, `heart_test.csv` is loaded for availability checks, but prediction-only output for unlabeled test rows is deferred until the pipeline exposes a fitted model safely.
 
 ## Generic Prediction Endpoint
 
@@ -181,6 +216,7 @@ report.model_audit.charts
 report.recommendations
 report.warnings
 report.limitations
+report.agent_insights
 report.report_markdown
 ```
 

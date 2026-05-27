@@ -219,6 +219,8 @@ def _class_label(label: Any, target_name: str, observed: bool) -> str:
     prefix = "" if observed else "Predicted "
     if target_name == "good_review":
         return f"{prefix}{'Good review' if int(label) == 1 else 'Bad review'}"
+    if target_name == "HeartDisease":
+        return f"{prefix}{'Heart disease' if int(label) == 1 else 'No heart disease'}"
     return f"{prefix}Class {label}"
 
 

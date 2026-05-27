@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+from pathlib import Path
 from typing import Any, Dict, List
 
 
@@ -69,3 +71,50 @@ def ecommerce_good_review_records() -> List[Dict[str, Any]]:
         )
 
     return rows
+
+
+HEART_DISEASE_DIR = Path(__file__).resolve().parents[2] / "examples" / "heart_disease"
+
+
+def load_csv_records(path: str | Path) -> List[Dict[str, Any]]:
+    """Load a CSV file into JSON-style records with simple numeric coercion."""
+
+    records: List[Dict[str, Any]] = []
+    with Path(path).open("r", encoding="utf-8", newline="") as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            records.append({key: _coerce_csv_value(value) for key, value in row.items()})
+    return records
+
+
+def get_heart_disease_train_records() -> List[Dict[str, Any]]:
+    """Load labeled Heart Disease training records."""
+
+    return load_csv_records(HEART_DISEASE_DIR / "heart_train.csv")
+
+
+def get_heart_disease_test_records() -> List[Dict[str, Any]]:
+    """Load unlabeled Heart Disease test records for a later prediction-only step."""
+
+    return load_csv_records(HEART_DISEASE_DIR / "heart_test.csv")
+
+
+def _coerce_csv_value(value: Any) -> Any:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return value
+
+    stripped = value.strip()
+    if stripped == "":
+        return None
+
+    try:
+        return int(stripped)
+    except ValueError:
+        pass
+
+    try:
+        return float(stripped)
+    except ValueError:
+        return stripped
