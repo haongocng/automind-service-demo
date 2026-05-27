@@ -1,0 +1,1 @@
+"""AutoMind-service application package."""

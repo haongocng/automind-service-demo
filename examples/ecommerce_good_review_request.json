@@ -1,0 +1,46 @@
+{
+  "data": [
+    {
+      "order_id": "example_order_001",
+      "customer_state": "SP",
+      "customer_city": "sao_paulo",
+      "order_status": "delivered",
+      "payment_type": "credit_card",
+      "payment_installments": 2,
+      "payment_value": 120.5,
+      "price": 90.0,
+      "freight_value": 15.5,
+      "product_photos_qty": 4,
+      "product_weight_g": 850,
+      "product_length_cm": 30,
+      "product_height_cm": 12,
+      "product_width_cm": 20,
+      "delivery_days": 5,
+      "late_delivery": 0,
+      "review_score": 5
+    },
+    {
+      "order_id": "example_order_002",
+      "customer_state": "RJ",
+      "customer_city": "rio_de_janeiro",
+      "order_status": "delivered",
+      "payment_type": "boleto",
+      "payment_installments": 1,
+      "payment_value": 78.2,
+      "price": 60.0,
+      "freight_value": 22.0,
+      "product_photos_qty": 2,
+      "product_weight_g": 1320,
+      "product_length_cm": 42,
+      "product_height_cm": 18,
+      "product_width_cm": 25,
+      "delivery_days": 14,
+      "late_delivery": 1,
+      "review_score": 2
+    }
+  ],
+  "metadata": {
+    "source": "wrenai-ecommerce-sample",
+    "task": "Good review prediction"
+  }
+}

@@ -1,0 +1,791 @@
+{
+  "status": "success",
+  "report": {
+    "title": "AutoMind E-commerce Good Review Prediction Report",
+    "executive_summary": [
+      "AutoMind analyzed 96 row-level records for the Good review prediction task.",
+      "The validation audit reports F1-score 0.93; these are demo validation metrics, not production guarantees.",
+      "The strongest model signals are payment_installments, delivery_days, product_height_cm."
+    ],
+    "dataset_overview": {
+      "rows": 96,
+      "columns": 17,
+      "target": "good_review",
+      "numeric_columns": [
+        "payment_installments",
+        "payment_value",
+        "price",
+        "freight_value",
+        "product_photos_qty",
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm",
+        "delivery_days",
+        "late_delivery",
+        "review_score"
+      ],
+      "categorical_columns": [
+        "order_id",
+        "customer_state",
+        "customer_city",
+        "order_status",
+        "payment_type"
+      ],
+      "missing_values": {
+        "order_id": 0,
+        "customer_state": 0,
+        "customer_city": 0,
+        "order_status": 0,
+        "payment_type": 0,
+        "payment_installments": 0,
+        "payment_value": 0,
+        "price": 0,
+        "freight_value": 0,
+        "product_photos_qty": 0,
+        "product_weight_g": 0,
+        "product_length_cm": 0,
+        "product_height_cm": 0,
+        "product_width_cm": 0,
+        "delivery_days": 0,
+        "late_delivery": 0,
+        "review_score": 0
+      },
+      "class_distribution": {
+        "Bad review": 30,
+        "Good review": 66
+      }
+    },
+    "eda": {
+      "summary": [
+        "The dataset contains 96 rows and 17 columns.",
+        "Detected 12 numeric columns and 5 categorical columns.",
+        "Total missing values across all columns: 0.",
+        "Target distribution: Bad review: 30, Good review: 66."
+      ],
+      "charts": [
+        {
+          "id": "class_distribution",
+          "title": "Good vs Bad Review Distribution",
+          "type": "bar",
+          "description": "Distribution of transformed review labels.",
+          "data": [
+            {
+              "label": "Bad review",
+              "value": 30
+            },
+            {
+              "label": "Good review",
+              "value": 66
+            }
+          ],
+          "x": "label",
+          "y": "value"
+        },
+        {
+          "id": "missing_values",
+          "title": "Missing Values by Column",
+          "type": "bar",
+          "description": "Columns with missing values. Empty data means no missing values were detected.",
+          "data": [],
+          "x": "column",
+          "y": "value"
+        },
+        {
+          "id": "numeric_columns",
+          "title": "Numeric Feature Columns",
+          "type": "bar",
+          "description": "Numeric columns available to the analysis pipeline.",
+          "data": [
+            {
+              "column": "payment_installments",
+              "value": 1
+            },
+            {
+              "column": "payment_value",
+              "value": 2
+            },
+            {
+              "column": "price",
+              "value": 3
+            },
+            {
+              "column": "freight_value",
+              "value": 4
+            },
+            {
+              "column": "product_photos_qty",
+              "value": 5
+            },
+            {
+              "column": "product_weight_g",
+              "value": 6
+            },
+            {
+              "column": "product_length_cm",
+              "value": 7
+            },
+            {
+              "column": "product_height_cm",
+              "value": 8
+            },
+            {
+              "column": "product_width_cm",
+              "value": 9
+            },
+            {
+              "column": "delivery_days",
+              "value": 10
+            },
+            {
+              "column": "late_delivery",
+              "value": 11
+            },
+            {
+              "column": "review_score",
+              "value": 12
+            }
+          ],
+          "x": "column",
+          "y": "value"
+        }
+      ]
+    },
+    "key_insights": [
+      "The selected model achieved an F1-score of 0.93 on the validation split.",
+      "Top predictive factors include payment_installments, delivery_days, product_height_cm.",
+      "The majority class is Good review (69% of labeled rows)."
+    ],
+    "prediction_task": {
+      "task_name": "Good review prediction",
+      "target_definition": "good_review = 1 if review_score >= 4 else 0",
+      "features_used": [
+        "payment_installments",
+        "payment_value",
+        "price",
+        "freight_value",
+        "product_photos_qty",
+        "product_weight_g",
+        "product_length_cm",
+        "product_height_cm",
+        "product_width_cm",
+        "delivery_days",
+        "late_delivery",
+        "customer_state",
+        "customer_city",
+        "order_status",
+        "payment_type"
+      ],
+      "excluded_columns": [
+        "order_id",
+        "review_score"
+      ],
+      "selected_model": "RandomForestClassifier",
+      "candidate_models": [
+        {
+          "name": "LogisticRegression",
+          "score": 0.8667
+        },
+        {
+          "name": "RandomForestClassifier",
+          "score": 0.9333
+        }
+      ]
+    },
+    "prediction_results": {
+      "sample_predictions": [
+        {
+          "row_index": 21,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_022",
+          "probability_good_review": 0.6442
+        },
+        {
+          "row_index": 22,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_023",
+          "probability_good_review": 0.3845
+        },
+        {
+          "row_index": 72,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_073",
+          "probability_good_review": 0.9946
+        },
+        {
+          "row_index": 70,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_071",
+          "probability_good_review": 0.4969
+        },
+        {
+          "row_index": 40,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_041",
+          "probability_good_review": 0.0945
+        },
+        {
+          "row_index": 60,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_061",
+          "probability_good_review": 0.9672
+        },
+        {
+          "row_index": 29,
+          "actual": "Good review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_030",
+          "probability_good_review": 0.04
+        },
+        {
+          "row_index": 57,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_058",
+          "probability_good_review": 0.7535
+        },
+        {
+          "row_index": 63,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_064",
+          "probability_good_review": 0.6453
+        },
+        {
+          "row_index": 71,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_072",
+          "probability_good_review": 0.0658
+        },
+        {
+          "row_index": 49,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_050",
+          "probability_good_review": 0.9805
+        },
+        {
+          "row_index": 23,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_024",
+          "probability_good_review": 0.0817
+        },
+        {
+          "row_index": 75,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_076",
+          "probability_good_review": 0.7752
+        },
+        {
+          "row_index": 2,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_003",
+          "probability_good_review": 0.9948
+        },
+        {
+          "row_index": 20,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_021",
+          "probability_good_review": 0.8668
+        },
+        {
+          "row_index": 12,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_013",
+          "probability_good_review": 0.9968
+        },
+        {
+          "row_index": 69,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_070",
+          "probability_good_review": 0.9192
+        },
+        {
+          "row_index": 65,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_066",
+          "probability_good_review": 0.035
+        },
+        {
+          "row_index": 94,
+          "actual": "Bad review",
+          "predicted": "Bad review",
+          "order_id": "demo_order_095",
+          "probability_good_review": 0.4113
+        },
+        {
+          "row_index": 8,
+          "actual": "Good review",
+          "predicted": "Good review",
+          "order_id": "demo_order_009",
+          "probability_good_review": 0.9982
+        }
+      ],
+      "charts": [
+        {
+          "id": "prediction_distribution",
+          "title": "Prediction Distribution",
+          "type": "bar",
+          "description": "Distribution of predicted labels on the validation split.",
+          "data": [
+            {
+              "label": "Predicted Bad review",
+              "value": 10
+            },
+            {
+              "label": "Predicted Good review",
+              "value": 14
+            }
+          ],
+          "x": "label",
+          "y": "value"
+        }
+      ]
+    },
+    "model_audit": {
+      "note": "Metrics are computed on a held-out validation split and are used only to audit the demo model.",
+      "metrics": {
+        "accuracy": 0.9167,
+        "precision": 1.0,
+        "recall": 0.875,
+        "f1": 0.9333
+      },
+      "confusion_matrix": [
+        [
+          8,
+          0
+        ],
+        [
+          2,
+          14
+        ]
+      ],
+      "charts": [
+        {
+          "id": "feature_importance",
+          "title": "Top Feature Importance",
+          "type": "bar",
+          "description": "Most influential features used by the selected model.",
+          "data": [
+            {
+              "feature": "payment_installments",
+              "value": 0.1661
+            },
+            {
+              "feature": "delivery_days",
+              "value": 0.1621
+            },
+            {
+              "feature": "product_height_cm",
+              "value": 0.1604
+            },
+            {
+              "feature": "late_delivery",
+              "value": 0.1603
+            },
+            {
+              "feature": "freight_value",
+              "value": 0.0845
+            },
+            {
+              "feature": "product_length_cm",
+              "value": 0.0323
+            },
+            {
+              "feature": "product_weight_g",
+              "value": 0.0299
+            },
+            {
+              "feature": "customer_state_BA",
+              "value": 0.0285
+            },
+            {
+              "feature": "payment_type_voucher",
+              "value": 0.0271
+            },
+            {
+              "feature": "customer_city_belo_horizonte",
+              "value": 0.021
+            }
+          ],
+          "x": "feature",
+          "y": "value"
+        }
+      ]
+    },
+    "recommendations": [
+      "Use this report as a demo validation result, not as a production decision system.",
+      "Render the chart-ready JSON in the WrenAI frontend to make model behavior easier to inspect.",
+      "Investigate operational drivers related to payment_installments, delivery_days, product_height_cm."
+    ],
+    "warnings": [],
+    "limitations": [
+      "The current demo may use sample or synthetic records.",
+      "Metrics are calculated on a validation split and should not be interpreted as production performance.",
+      "The current step does not call an external LLM and uses rule-based report synthesis.",
+      "The service returns chart-ready JSON, but visual chart rendering must be implemented in the frontend."
+    ],
+    "report_markdown": "## AutoMind E-commerce Good Review Prediction Report\n\n### Executive Summary\n- AutoMind analyzed 96 row-level records for the Good review prediction task.\n- The validation audit reports F1-score 0.93; these are demo validation metrics, not production guarantees.\n- The strongest model signals are payment_installments, delivery_days, product_height_cm.\n\n### Dataset Overview\n- Rows: 96\n- Columns: 17\n- Target: good_review\n- Numeric columns: 12\n- Categorical columns: 5\n\n### EDA Summary\n- The dataset contains 96 rows and 17 columns.\n- Detected 12 numeric columns and 5 categorical columns.\n- Total missing values across all columns: 0.\n- Target distribution: Bad review: 30, Good review: 66.\n\n### Prediction Task\n- Task: Good review prediction\n- Target definition: good_review = 1 if review_score >= 4 else 0\n- Selected model: RandomForestClassifier\n- Features used: 15\n\n### Model Audit\n- Note: Metrics are computed on a held-out validation split and are used only to audit the demo model.\n- accuracy: 0.9167\n- precision: 1.0\n- recall: 0.875\n- f1: 0.9333\n\n### Key Insights\n- The selected model achieved an F1-score of 0.93 on the validation split.\n- Top predictive factors include payment_installments, delivery_days, product_height_cm.\n- The majority class is Good review (69% of labeled rows).\n\n### Recommendations\n- Use this report as a demo validation result, not as a production decision system.\n- Render the chart-ready JSON in the WrenAI frontend to make model behavior easier to inspect.\n- Investigate operational drivers related to payment_installments, delivery_days, product_height_cm.\n\n### Warnings and Limitations\n- Limitation: The current demo may use sample or synthetic records.\n- Limitation: Metrics are calculated on a validation split and should not be interpreted as production performance.\n- Limitation: The current step does not call an external LLM and uses rule-based report synthesis.\n- Limitation: The service returns chart-ready JSON, but visual chart rendering must be implemented in the frontend."
+  },
+  "legacy": {
+    "summary": {
+      "task": "Good review prediction",
+      "rows": 96,
+      "target": "good_review",
+      "selected_model": "RandomForestClassifier"
+    },
+    "metrics": {
+      "accuracy": 0.9167,
+      "precision": 1.0,
+      "recall": 0.875,
+      "f1": 0.9333,
+      "confusion_matrix": [
+        [
+          8,
+          0
+        ],
+        [
+          2,
+          14
+        ]
+      ]
+    },
+    "charts": {
+      "feature_importance": [
+        {
+          "feature": "payment_installments",
+          "value": 0.1661
+        },
+        {
+          "feature": "delivery_days",
+          "value": 0.1621
+        },
+        {
+          "feature": "product_height_cm",
+          "value": 0.1604
+        },
+        {
+          "feature": "late_delivery",
+          "value": 0.1603
+        },
+        {
+          "feature": "freight_value",
+          "value": 0.0845
+        },
+        {
+          "feature": "product_length_cm",
+          "value": 0.0323
+        },
+        {
+          "feature": "product_weight_g",
+          "value": 0.0299
+        },
+        {
+          "feature": "customer_state_BA",
+          "value": 0.0285
+        },
+        {
+          "feature": "payment_type_voucher",
+          "value": 0.0271
+        },
+        {
+          "feature": "customer_city_belo_horizonte",
+          "value": 0.021
+        }
+      ],
+      "class_distribution": [
+        {
+          "label": "Bad review",
+          "value": 30
+        },
+        {
+          "label": "Good review",
+          "value": 66
+        }
+      ],
+      "prediction_distribution": [
+        {
+          "label": "Predicted Bad review",
+          "value": 10
+        },
+        {
+          "label": "Predicted Good review",
+          "value": 14
+        }
+      ]
+    },
+    "insight": "The model achieved an F1-score of 0.93 for Good review prediction. The most influential signals were payment_installments, delivery_days, product_height_cm. This suggests these factors are useful starting points for explaining the predicted outcome.",
+    "warnings": []
+  },
+  "summary": {
+    "task": "Good review prediction",
+    "rows": 96,
+    "target": "good_review",
+    "selected_model": "RandomForestClassifier"
+  },
+  "dataset_summary": {
+    "rows": 96,
+    "columns": 17,
+    "column_names": [
+      "order_id",
+      "customer_state",
+      "customer_city",
+      "order_status",
+      "payment_type",
+      "payment_installments",
+      "payment_value",
+      "price",
+      "freight_value",
+      "product_photos_qty",
+      "product_weight_g",
+      "product_length_cm",
+      "product_height_cm",
+      "product_width_cm",
+      "delivery_days",
+      "late_delivery",
+      "review_score"
+    ],
+    "dtypes": {
+      "order_id": "str",
+      "customer_state": "str",
+      "customer_city": "str",
+      "order_status": "str",
+      "payment_type": "str",
+      "payment_installments": "int64",
+      "payment_value": "float64",
+      "price": "float64",
+      "freight_value": "float64",
+      "product_photos_qty": "int64",
+      "product_weight_g": "int64",
+      "product_length_cm": "int64",
+      "product_height_cm": "int64",
+      "product_width_cm": "int64",
+      "delivery_days": "int64",
+      "late_delivery": "int64",
+      "review_score": "int64"
+    },
+    "missing_values": {
+      "order_id": 0,
+      "customer_state": 0,
+      "customer_city": 0,
+      "order_status": 0,
+      "payment_type": 0,
+      "payment_installments": 0,
+      "payment_value": 0,
+      "price": 0,
+      "freight_value": 0,
+      "product_photos_qty": 0,
+      "product_weight_g": 0,
+      "product_length_cm": 0,
+      "product_height_cm": 0,
+      "product_width_cm": 0,
+      "delivery_days": 0,
+      "late_delivery": 0,
+      "review_score": 0
+    },
+    "numeric_columns": [
+      "payment_installments",
+      "payment_value",
+      "price",
+      "freight_value",
+      "product_photos_qty",
+      "product_weight_g",
+      "product_length_cm",
+      "product_height_cm",
+      "product_width_cm",
+      "delivery_days",
+      "late_delivery",
+      "review_score"
+    ],
+    "categorical_columns": [
+      "order_id",
+      "customer_state",
+      "customer_city",
+      "order_status",
+      "payment_type"
+    ]
+  },
+  "target_summary": {
+    "original_target_column": "review_score",
+    "transformed_target_column": "good_review",
+    "class_distribution": {
+      "0": 30,
+      "1": 66
+    },
+    "task_type": "classification"
+  },
+  "model": {
+    "selected_model": "RandomForestClassifier",
+    "candidate_models": [
+      {
+        "name": "LogisticRegression",
+        "score": 0.8667
+      },
+      {
+        "name": "RandomForestClassifier",
+        "score": 0.9333
+      }
+    ],
+    "dropped_columns": [
+      "order_id",
+      "review_score"
+    ],
+    "numeric_features": [
+      "payment_installments",
+      "payment_value",
+      "price",
+      "freight_value",
+      "product_photos_qty",
+      "product_weight_g",
+      "product_length_cm",
+      "product_height_cm",
+      "product_width_cm",
+      "delivery_days",
+      "late_delivery"
+    ],
+    "categorical_features": [
+      "customer_state",
+      "customer_city",
+      "order_status",
+      "payment_type"
+    ]
+  },
+  "metrics": {
+    "accuracy": 0.9167,
+    "precision": 1.0,
+    "recall": 0.875,
+    "f1": 0.9333,
+    "confusion_matrix": [
+      [
+        8,
+        0
+      ],
+      [
+        2,
+        14
+      ]
+    ]
+  },
+  "charts": {
+    "feature_importance": [
+      {
+        "feature": "payment_installments",
+        "value": 0.1661
+      },
+      {
+        "feature": "delivery_days",
+        "value": 0.1621
+      },
+      {
+        "feature": "product_height_cm",
+        "value": 0.1604
+      },
+      {
+        "feature": "late_delivery",
+        "value": 0.1603
+      },
+      {
+        "feature": "freight_value",
+        "value": 0.0845
+      },
+      {
+        "feature": "product_length_cm",
+        "value": 0.0323
+      },
+      {
+        "feature": "product_weight_g",
+        "value": 0.0299
+      },
+      {
+        "feature": "customer_state_BA",
+        "value": 0.0285
+      },
+      {
+        "feature": "payment_type_voucher",
+        "value": 0.0271
+      },
+      {
+        "feature": "customer_city_belo_horizonte",
+        "value": 0.021
+      }
+    ],
+    "class_distribution": [
+      {
+        "label": "Bad review",
+        "value": 30
+      },
+      {
+        "label": "Good review",
+        "value": 66
+      }
+    ],
+    "prediction_distribution": [
+      {
+        "label": "Predicted Bad review",
+        "value": 10
+      },
+      {
+        "label": "Predicted Good review",
+        "value": 14
+      }
+    ]
+  },
+  "top_features": [
+    {
+      "feature": "payment_installments",
+      "importance": 0.1661
+    },
+    {
+      "feature": "delivery_days",
+      "importance": 0.1621
+    },
+    {
+      "feature": "product_height_cm",
+      "importance": 0.1604
+    },
+    {
+      "feature": "late_delivery",
+      "importance": 0.1603
+    },
+    {
+      "feature": "freight_value",
+      "importance": 0.0845
+    },
+    {
+      "feature": "product_length_cm",
+      "importance": 0.0323
+    },
+    {
+      "feature": "product_weight_g",
+      "importance": 0.0299
+    },
+    {
+      "feature": "customer_state_BA",
+      "importance": 0.0285
+    },
+    {
+      "feature": "payment_type_voucher",
+      "importance": 0.0271
+    },
+    {
+      "feature": "customer_city_belo_horizonte",
+      "importance": 0.021
+    }
+  ],
+  "insight": "The model achieved an F1-score of 0.93 for Good review prediction. The most influential signals were payment_installments, delivery_days, product_height_cm. This suggests these factors are useful starting points for explaining the predicted outcome.",
+  "warnings": []
+}
