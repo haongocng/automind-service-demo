@@ -18,18 +18,21 @@ from app.services.llm_insight_agent import (
 
 AnalysisResult = Tuple[str, Optional[str]]
 HEART_TARGET = "HeartDisease"
+ECOM_TARGET = "good_review"
+SUPPORTED_TARGETS = {HEART_TARGET, ECOM_TARGET}
 SYSTEM_PROMPT = (
     "You are a professional data analyst writing chart-level explanations for a prediction report.\n"
     "Use only the compact chart summary provided.\n"
     "Cite concrete values, feature names, class names, ranks, counts, and percentages when available.\n"
-    "For correlations, mention direction and magnitude without claiming causality.\n"
     "Compare groups/classes when the chart summary supports it.\n"
     "Explain what each chart implies for the classification task.\n"
+    "Use the domain labels from the input and do not mix terminology across domains.\n"
+    "For Heart Disease, discuss statistical associations, classification outcomes, model signals, validation split behavior, and risk patterns only.\n"
+    "For E-commerce, discuss review-quality patterns, customer experience signals, and business investigation points only.\n"
+    "For correlations, mention direction and magnitude without claiming causality.\n"
     "Avoid vague comments such as 'this chart provides insights'.\n"
     "Avoid implementation details, frontend, API, JSON, or pipeline wording.\n"
-    "For Heart Disease, discuss statistical associations, classification outcomes, model signals, validation split behavior, and risk patterns only.\n"
     "Do not provide diagnosis, treatment advice, medication advice, or patient-care instructions.\n"
-    "Do not use E-commerce language or Good review / Bad review wording.\n"
     "Return only the requested object. Do not include markdown fences."
 )
 FORBIDDEN_HEART_TERMS = (
@@ -50,6 +53,20 @@ FORBIDDEN_HEART_TERMS = (
     "implementation",
     "json",
 )
+FORBIDDEN_ECOMMERCE_TERMS = (
+    "heart disease",
+    "heartdisease",
+    "diagnosis",
+    "treatment",
+    "medication",
+    "clinical",
+    "frontend",
+    "api endpoint",
+    "pipeline",
+    "implementation",
+    "json",
+    "as an ai",
+)
 GENERIC_PHRASES = (
     "this chart provides insights",
     "provides insights",
@@ -62,7 +79,7 @@ def apply_chart_insights(report: Dict[str, Any]) -> AnalysisResult:
     """Attach optional chart-level analysis to supported report charts."""
 
     target_metadata = report.get("target_metadata", {})
-    if target_metadata.get("target_column") != HEART_TARGET:
+    if target_metadata.get("target_column") not in SUPPORTED_TARGETS:
         return "skipped", None
 
     fallback = build_fallback_chart_insights(report)
@@ -78,13 +95,15 @@ def build_chart_summary(
     domain_metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     domain_metadata = domain_metadata or report.get("target_metadata", {})
+    positive_label = domain_metadata.get("positive_label")
+    negative_label = domain_metadata.get("negative_label")
     return {
         "domain_name": domain_metadata.get("domain_name"),
         "target_column": domain_metadata.get("target_column"),
-        "positive_label": domain_metadata.get("positive_label"),
-        "negative_label": domain_metadata.get("negative_label"),
+        "positive_label": positive_label,
+        "negative_label": negative_label,
         "charts": [
-            _compact_chart(chart, _prediction_reference_chart(report))
+            _compact_chart(chart, _prediction_reference_chart(report), positive_label, negative_label)
             for chart in _all_report_charts(report)
             if _is_supported_chart(chart)
         ],
@@ -123,7 +142,7 @@ def generate_chart_insights(report: Dict[str, Any]) -> Tuple[Optional[Dict[str, 
             {"role": "user", "content": user_prompt},
         ],
         "temperature": 0,
-        "max_tokens": 1200,
+        "max_tokens": 1800,
     }
 
     request = urllib.request.Request(
@@ -159,7 +178,7 @@ def generate_chart_insights(report: Dict[str, Any]) -> Tuple[Optional[Dict[str, 
     required_chart_ids = {chart.get("id") for chart in compact_summary.get("charts", []) if chart.get("id")}
     if required_chart_ids and not required_chart_ids.issubset(set(insights)):
         return None, "incomplete"
-    if _violates_heart_guardrails(insights):
+    if _violates_domain_guardrails(insights, compact_summary.get("target_column")):
         return None, "guardrail"
     if _has_generic_chart_insights(insights, compact_summary):
         return None, "generic"
@@ -168,6 +187,13 @@ def generate_chart_insights(report: Dict[str, Any]) -> Tuple[Optional[Dict[str, 
 
 
 def build_fallback_chart_insights(report: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    target_column = report.get("target_metadata", {}).get("target_column")
+    if target_column == ECOM_TARGET:
+        return _build_ecommerce_fallback_chart_insights(report)
+    return _build_heart_fallback_chart_insights(report)
+
+
+def _build_heart_fallback_chart_insights(report: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     insights: Dict[str, Dict[str, Any]] = {}
     chart_map = {chart.get("id"): chart for chart in _all_report_charts(report)}
 
@@ -198,6 +224,39 @@ def build_fallback_chart_insights(report: Dict[str, Any]) -> Dict[str, Dict[str,
 
     return insights
 
+
+def _build_ecommerce_fallback_chart_insights(report: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    insights: Dict[str, Dict[str, Any]] = {}
+    chart_map = {chart.get("id"): chart for chart in _all_report_charts(report)}
+
+    feature_chart = chart_map.get("ecommerce_feature_importance_ranking")
+    if feature_chart:
+        insights["ecommerce_feature_importance_ranking"] = _ecommerce_feature_importance_fallback(feature_chart)
+
+    confusion_chart = chart_map.get("ecommerce_confusion_matrix")
+    if confusion_chart:
+        insights["ecommerce_confusion_matrix"] = _ecommerce_confusion_matrix_fallback(confusion_chart)
+
+    for chart_id in (
+        "ecommerce_late_delivery_by_outcome",
+        "ecommerce_delivery_days_by_outcome",
+        "ecommerce_payment_type_by_outcome",
+        "ecommerce_freight_value_by_outcome",
+    ):
+        chart = chart_map.get(chart_id)
+        if chart:
+            insights[chart_id] = _ecommerce_grouped_outcome_fallback(chart)
+
+    class_chart = chart_map.get("class_distribution")
+    prediction_reference_chart = chart_map.get("ecommerce_confusion_matrix") or class_chart
+    if class_chart:
+        insights["class_distribution"] = _ecommerce_class_distribution_fallback(class_chart)
+
+    prediction_chart = chart_map.get("prediction_distribution")
+    if prediction_chart:
+        insights["prediction_distribution"] = _ecommerce_prediction_distribution_fallback(prediction_chart, prediction_reference_chart)
+
+    return insights
 
 def _feature_importance_fallback(chart: Dict[str, Any]) -> Dict[str, Any]:
     rows = _top_feature_rows(chart, limit=10)
@@ -358,9 +417,144 @@ def _prediction_distribution_fallback(
     )
 
 
+
+def _ecommerce_feature_importance_fallback(chart: Dict[str, Any]) -> Dict[str, Any]:
+    rows = _top_feature_rows(chart, limit=10)
+    top_features = rows[:5]
+    top_names = [row["feature"] for row in top_features]
+    top_text = ", ".join(top_names[:3]) if top_names else "the top-ranked features"
+    observations = [
+        f"Rank {row['rank']}: {row['feature']} has importance {_format_number(row['value'])}."
+        for row in top_features
+    ]
+    dominance = _dominance_note(rows)
+    if dominance:
+        observations.append(dominance)
+
+    return _analysis(
+        headline=f"{top_text} are the leading model signals for Good review prediction.",
+        what_it_shows="This ranking lists the strongest model features used to separate Good review from Bad review outcomes.",
+        key_observations=observations[:5],
+        interpretation=(
+            f"The classifier relies most on {top_text}; these are useful business signals for review-quality prediction, "
+            "but they should not be read as causal proof."
+        ),
+        caveat="Feature importance depends on the fitted model and validation split, so compare it with behavior charts and error metrics.",
+    )
+
+
+def _ecommerce_confusion_matrix_fallback(chart: Dict[str, Any]) -> Dict[str, Any]:
+    counts = _confusion_counts(chart.get("data", []))
+    correct = counts["true_positive"] + counts["true_negative"]
+    incorrect = counts["false_positive"] + counts["false_negative"]
+    total = correct + incorrect
+    return _analysis(
+        headline=f"The model correctly classifies {correct} of {total} validation orders.",
+        what_it_shows="This matrix compares actual review outcomes with predicted review outcomes on the validation split.",
+        key_observations=[
+            f"True positives: {counts['true_positive']} Good review orders were predicted as Good review.",
+            f"True negatives: {counts['true_negative']} Bad review orders were predicted as Bad review.",
+            f"False negatives: {counts['false_negative']} Good review orders were missed as Bad review.",
+            f"False positives: {counts['false_positive']} Bad review orders were flagged as Good review.",
+            f"Off-diagonal cells contain {incorrect} total review-outcome mistakes.",
+        ],
+        interpretation=(
+            "False negatives can hide satisfied orders, while false positives can overstate likely satisfaction; "
+            "both error types matter for review-quality monitoring."
+        ),
+        caveat="This matrix reflects one validation split and should be rechecked with fresh order data before operational use.",
+    )
+
+
+def _ecommerce_grouped_outcome_fallback(chart: Dict[str, Any]) -> Dict[str, Any]:
+    groups = _categorical_outcome_groups(chart.get("data", []), "Good review", "Bad review")
+    ordered = _ordered_categories(groups, _ecommerce_preferred_categories(chart.get("id")))
+    observations = []
+    for category in ordered[:5]:
+        row = groups[category]
+        observations.append(
+            f"{category} has {row['positive_count']} Good review orders and {row['negative_count']} Bad review orders; "
+            f"the dominant outcome is {row['dominant_outcome']}."
+        )
+
+    strongest_bad = _highest_negative_share_group(groups)
+    strongest_good = _highest_positive_share_group(groups)
+    if strongest_bad:
+        observations.append(
+            f"{strongest_bad['category']} has the highest Bad review share at {strongest_bad['negative_percentage']}."
+        )
+    if strongest_good and strongest_good != strongest_bad:
+        observations.append(
+            f"{strongest_good['category']} has the highest Good review share at {strongest_good['positive_percentage']}."
+        )
+
+    title = str(chart.get("title") or "Review Outcome Chart")
+    subject = title.replace(" by Review Outcome", "")
+    return _analysis(
+        headline=f"{subject} shows uneven review-quality patterns across groups.",
+        what_it_shows=f"This grouped bar chart compares Good review and Bad review counts across {subject.lower()} groups.",
+        key_observations=observations[:5],
+        interpretation=(
+            "Groups with a higher Bad review share are useful investigation segments for customer experience, fulfillment, or payment-flow review."
+        ),
+        caveat="The chart shows association in this prepared dataset and does not prove that the grouped factor caused review quality."
+    )
+
+
+def _ecommerce_class_distribution_fallback(chart: Dict[str, Any]) -> Dict[str, Any]:
+    summary = _distribution_summary(chart.get("data", []), "Good review", "Bad review")
+    positive = summary["positive_count"]
+    negative = summary["negative_count"]
+    total = summary["total"]
+    balance = _balance_description(positive, negative)
+    return _analysis(
+        headline=f"The target is {balance}, with {positive} Good review and {negative} Bad review orders.",
+        what_it_shows="This chart shows the transformed review-quality target distribution in the prepared E-commerce dataset.",
+        key_observations=[
+            f"Good review accounts for {_percentage(positive, total)} of labeled orders ({positive} of {total}).",
+            f"Bad review accounts for {_percentage(negative, total)} of labeled orders ({negative} of {total}).",
+            f"The absolute class gap is {abs(positive - negative)} orders.",
+        ],
+        interpretation="Class balance affects how accuracy, precision, recall, and F1 should be interpreted for review prediction.",
+        caveat="Class counts describe the sample; they do not show which operational factors explain review outcomes.",
+    )
+
+
+def _ecommerce_prediction_distribution_fallback(
+    chart: Dict[str, Any],
+    actual_chart: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    predicted = _distribution_summary(chart.get("data", []), "Good review", "Bad review")
+    actual = _actual_distribution_summary(actual_chart, "Good review", "Bad review") if actual_chart else None
+    positive = predicted["positive_count"]
+    negative = predicted["negative_count"]
+    total = predicted["total"]
+    observations = [
+        f"The model predicts Good review for {positive} validation orders ({_percentage(positive, total)}).",
+        f"The model predicts Bad review for {negative} validation orders ({_percentage(negative, total)}).",
+    ]
+    if actual and actual["total"]:
+        observations.append(
+            f"Observed validation balance is {actual['positive_count']} Good review and {actual['negative_count']} Bad review orders."
+        )
+        observations.append(
+            f"Predicted Good review differs from observed Good review by {positive - actual['positive_count']} orders."
+        )
+
+    return _analysis(
+        headline=f"Predictions lean toward {'Good review' if positive >= negative else 'Bad review'} on the validation split.",
+        what_it_shows="This chart shows how the classifier distributes predicted review-quality labels.",
+        key_observations=observations[:5],
+        interpretation="Prediction distribution helps reveal whether the model is over-concentrating on Good review or Bad review outcomes.",
+        caveat="Prediction counts do not show correctness by themselves; compare them with the confusion matrix and validation metrics.",
+    )
+
+
 def _compact_chart(
     chart: Dict[str, Any],
     actual_distribution_chart: Optional[Dict[str, Any]] = None,
+    positive_label: Optional[str] = None,
+    negative_label: Optional[str] = None,
 ) -> Dict[str, Any]:
     chart_id = chart.get("id")
     kind = chart.get("kind")
@@ -371,18 +565,25 @@ def _compact_chart(
         "type": chart.get("type"),
     }
     data = list(chart.get("data") or [])
+    labels = _chart_labels(chart_id, positive_label, negative_label)
     if chart_id == "heart_correlation_heatmap" or kind == "correlation_heatmap":
         compact["correlation_summary"] = _compact_correlations(data)
-    elif chart_id == "heart_feature_importance_ranking" or kind == "feature_importance":
+    elif chart_id in {"heart_feature_importance_ranking", "ecommerce_feature_importance_ranking"} or kind == "feature_importance":
         compact["feature_importance_summary"] = _compact_feature_importance(data)
-    elif chart_id == "heart_confusion_matrix" or kind == "confusion_matrix":
-        compact["confusion_matrix_summary"] = _compact_confusion_matrix(data)
-    elif chart_id == "heart_st_slope_by_outcome" or kind == "categorical_outcome_distribution":
-        compact["categorical_outcome_summary"] = _compact_categorical_outcome(data)
+    elif chart_id in {"heart_confusion_matrix", "ecommerce_confusion_matrix"} or kind == "confusion_matrix":
+        compact["confusion_matrix_summary"] = _compact_confusion_matrix(
+            data,
+            *labels,
+        )
+    elif kind in {"categorical_outcome_distribution", "bucketed_outcome_distribution"}:
+        compact["categorical_outcome_summary"] = _compact_categorical_outcome(
+            data,
+            *labels,
+        )
     elif chart_id == "class_distribution" or kind == "class_distribution":
-        compact["class_distribution_summary"] = _compact_class_distribution(data)
+        compact["class_distribution_summary"] = _compact_class_distribution(data, *labels)
     elif chart_id == "prediction_distribution" or kind == "prediction_distribution":
-        compact["prediction_distribution_summary"] = _compact_prediction_distribution(data, actual_distribution_chart)
+        compact["prediction_distribution_summary"] = _compact_prediction_distribution(data, actual_distribution_chart, *labels)
     else:
         compact["top_rows"] = data[:8]
     return compact
@@ -397,7 +598,11 @@ def _compact_feature_importance(data: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def _compact_confusion_matrix(data: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _compact_confusion_matrix(
+    data: List[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
+) -> Dict[str, Any]:
     counts = _confusion_counts(data)
     correct = counts["true_positive"] + counts["true_negative"]
     incorrect = counts["false_positive"] + counts["false_negative"]
@@ -405,36 +610,46 @@ def _compact_confusion_matrix(data: List[Dict[str, Any]]) -> Dict[str, Any]:
         **counts,
         "correct_predictions": correct,
         "incorrect_predictions": incorrect,
-        "positive_label": "Heart disease",
-        "negative_label": "No heart disease",
+        "positive_label": positive_label,
+        "negative_label": negative_label,
         "cell_explanations": {
-            "true_positive": "actual Heart disease predicted as Heart disease",
-            "true_negative": "actual No heart disease predicted as No heart disease",
-            "false_positive": "actual No heart disease predicted as Heart disease",
-            "false_negative": "actual Heart disease predicted as No heart disease",
+            "true_positive": f"actual {positive_label} predicted as {positive_label}",
+            "true_negative": f"actual {negative_label} predicted as {negative_label}",
+            "false_positive": f"actual {negative_label} predicted as {positive_label}",
+            "false_negative": f"actual {positive_label} predicted as {negative_label}",
         },
     }
 
 
-def _compact_categorical_outcome(data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    groups = _categorical_outcome_groups(data)
+def _compact_categorical_outcome(
+    data: List[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
+) -> Dict[str, Any]:
+    groups = _categorical_outcome_groups(data, positive_label, negative_label)
     return {
-        "groups": [groups[key] for key in _ordered_categories(groups, ["Flat", "Up", "Down"])],
-        "positive_label": "Heart disease",
-        "negative_label": "No heart disease",
+        "groups": [groups[key] for key in _ordered_categories(groups, ["Flat", "Up", "Down", "On-time delivery", "Late delivery", "0-3 days", "4-7 days", "8-14 days", "15+ days"])],
+        "positive_label": positive_label,
+        "negative_label": negative_label,
     }
 
 
-def _compact_class_distribution(data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    return _distribution_summary(data)
+def _compact_class_distribution(
+    data: List[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
+) -> Dict[str, Any]:
+    return _distribution_summary(data, positive_label, negative_label)
 
 
 def _compact_prediction_distribution(
     prediction_data: List[Dict[str, Any]],
     actual_reference_chart: Optional[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
 ) -> Dict[str, Any]:
-    predicted = _distribution_summary(prediction_data)
-    actual = _actual_distribution_summary(actual_reference_chart) if actual_reference_chart else _distribution_summary([])
+    predicted = _distribution_summary(prediction_data, positive_label, negative_label)
+    actual = _actual_distribution_summary(actual_reference_chart, positive_label, negative_label) if actual_reference_chart else _distribution_summary([], positive_label, negative_label)
     comparison = None
     if actual["total"]:
         comparison = {
@@ -542,7 +757,11 @@ def _confusion_counts(data: List[Dict[str, Any]]) -> Dict[str, int]:
     return counts
 
 
-def _categorical_outcome_groups(data: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+def _categorical_outcome_groups(
+    data: List[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
+) -> Dict[str, Dict[str, Any]]:
     groups: Dict[str, Dict[str, Any]] = {}
     for row in data:
         category = str(row.get("category", "Unknown"))
@@ -568,9 +787,9 @@ def _categorical_outcome_groups(data: List[Dict[str, Any]]) -> Dict[str, Dict[st
         positive = group["positive_count"]
         negative = group["negative_count"]
         if positive > negative:
-            group["dominant_outcome"] = "Heart disease"
+            group["dominant_outcome"] = positive_label
         elif negative > positive:
-            group["dominant_outcome"] = "No heart disease"
+            group["dominant_outcome"] = negative_label
         else:
             group["dominant_outcome"] = "Tie"
         total = group["total"]
@@ -585,7 +804,11 @@ def _ordered_categories(groups: Dict[str, Dict[str, Any]], preferred: List[str])
     return ordered + remaining
 
 
-def _distribution_summary(data: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _distribution_summary(
+    data: List[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
+) -> Dict[str, Any]:
     positive = 0
     negative = 0
     other = 0
@@ -603,8 +826,8 @@ def _distribution_summary(data: List[Dict[str, Any]]) -> Dict[str, Any]:
             other += value
     total = positive + negative + other
     return {
-        "positive_label": "Heart disease",
-        "negative_label": "No heart disease",
+        "positive_label": positive_label,
+        "negative_label": negative_label,
         "positive_count": positive,
         "negative_count": negative,
         "other_count": other,
@@ -683,6 +906,10 @@ def _balance_description(positive: int, negative: int) -> str:
 def _label_kind(value: Any) -> str:
     label = str(value or "").strip().lower()
     label = label.replace("predicted ", "")
+    if "bad review" in label:
+        return "negative"
+    if "good review" in label:
+        return "positive"
     if "no heart disease" in label:
         return "negative"
     if "heart disease" in label or label == "1":
@@ -734,12 +961,20 @@ def _find_chart(report: Dict[str, Any], chart_id: str) -> Optional[Dict[str, Any
 
 
 def _prediction_reference_chart(report: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    return _find_chart(report, "heart_confusion_matrix") or _find_chart(report, "class_distribution")
+    return (
+        _find_chart(report, "heart_confusion_matrix")
+        or _find_chart(report, "ecommerce_confusion_matrix")
+        or _find_chart(report, "class_distribution")
+    )
 
 
-def _actual_distribution_summary(reference_chart: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def _actual_distribution_summary(
+    reference_chart: Optional[Dict[str, Any]],
+    positive_label: str = "Heart disease",
+    negative_label: str = "No heart disease",
+) -> Dict[str, Any]:
     if not reference_chart:
-        return _distribution_summary([])
+        return _distribution_summary([], positive_label, negative_label)
     data = list(reference_chart.get("data") or [])
     if reference_chart.get("id") == "heart_confusion_matrix" or reference_chart.get("kind") == "confusion_matrix":
         counts = _confusion_counts(data)
@@ -747,8 +982,8 @@ def _actual_distribution_summary(reference_chart: Optional[Dict[str, Any]]) -> D
         negative = counts["true_negative"] + counts["false_positive"]
         total = positive + negative
         return {
-            "positive_label": "Heart disease",
-            "negative_label": "No heart disease",
+            "positive_label": positive_label,
+            "negative_label": negative_label,
             "positive_count": positive,
             "negative_count": negative,
             "other_count": 0,
@@ -756,11 +991,48 @@ def _actual_distribution_summary(reference_chart: Optional[Dict[str, Any]]) -> D
             "positive_percentage": _percentage(positive, total),
             "negative_percentage": _percentage(negative, total),
             "rows": [
-                {"label": "Heart disease", "value": positive},
-                {"label": "No heart disease", "value": negative},
+                {"label": positive_label, "value": positive},
+                {"label": negative_label, "value": negative},
             ],
         }
-    return _distribution_summary(data)
+    return _distribution_summary(data, positive_label, negative_label)
+
+
+def _chart_labels(
+    chart_id: Any,
+    positive_label: Optional[str] = None,
+    negative_label: Optional[str] = None,
+) -> Tuple[str, str]:
+    if positive_label and negative_label:
+        return str(positive_label), str(negative_label)
+    chart_text = str(chart_id or "")
+    if chart_text.startswith("ecommerce_"):
+        return "Good review", "Bad review"
+    return "Heart disease", "No heart disease"
+
+
+def _ecommerce_preferred_categories(chart_id: Any) -> List[str]:
+    if chart_id == "ecommerce_late_delivery_by_outcome":
+        return ["On-time delivery", "Late delivery"]
+    if chart_id == "ecommerce_delivery_days_by_outcome":
+        return ["0-3 days", "4-7 days", "8-14 days", "15+ days"]
+    if chart_id == "ecommerce_freight_value_by_outcome":
+        return ["Low freight", "Medium freight", "High freight"]
+    return []
+
+
+def _highest_negative_share_group(groups: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    candidates = [group for group in groups.values() if group.get("total", 0)]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda group: group.get("negative_count", 0) / group.get("total", 1))
+
+
+def _highest_positive_share_group(groups: Dict[str, Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    candidates = [group for group in groups.values() if group.get("total", 0)]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda group: group.get("positive_count", 0) / group.get("total", 1))
 
 def _has_generic_chart_insights(
     insights: Dict[str, Dict[str, Any]],
@@ -834,6 +1106,12 @@ def _is_supported_chart(chart: Dict[str, Any]) -> bool:
         "heart_confusion_matrix",
         "heart_correlation_heatmap",
         "heart_st_slope_by_outcome",
+        "ecommerce_feature_importance_ranking",
+        "ecommerce_confusion_matrix",
+        "ecommerce_late_delivery_by_outcome",
+        "ecommerce_delivery_days_by_outcome",
+        "ecommerce_payment_type_by_outcome",
+        "ecommerce_freight_value_by_outcome",
         "class_distribution",
         "prediction_distribution",
     }
@@ -872,8 +1150,10 @@ def _normalize_chart_insights(value: Any) -> Dict[str, Dict[str, Any]]:
     return {key: value for key, value in normalized.items() if value.get("headline")}
 
 
-def _violates_heart_guardrails(insights: Dict[str, Dict[str, Any]]) -> bool:
+def _violates_domain_guardrails(insights: Dict[str, Dict[str, Any]], target_column: Any) -> bool:
     text = json.dumps(insights, ensure_ascii=False).lower()
+    if target_column == ECOM_TARGET:
+        return any(term in text for term in FORBIDDEN_ECOMMERCE_TERMS)
     return any(term in text for term in FORBIDDEN_HEART_TERMS)
 
 

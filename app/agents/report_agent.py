@@ -5,6 +5,7 @@ from typing import Any, Dict
 from app.agents.base import BaseAgent
 from app.schemas import TargetTransform
 from app.services.domain_metadata import get_target_metadata
+from app.services.ecommerce_charts import enhance_ecommerce_report_charts
 from app.services.heart_disease_charts import enhance_heart_disease_report_charts
 from app.services.report import build_prediction_report, render_report_markdown
 
@@ -35,6 +36,7 @@ class ReportAgent(BaseAgent):
             warnings=context["warnings"],
             target_metadata=target_metadata,
         )
+        enhance_ecommerce_report_charts(report, context.get("modeling_df"))
         enhance_heart_disease_report_charts(report, context.get("modeling_df"))
         context["report"] = report
         self.add_trace(context, "success", "Built structured prediction report.")
