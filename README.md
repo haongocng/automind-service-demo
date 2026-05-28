@@ -195,6 +195,34 @@ report.agent_insights
 ```
 
 
+
+## Lightweight Multi-Agent Architecture
+
+The public `SimplifiedAutoMindPipeline` interface is kept for compatibility, but it now delegates to `AutoMindOrchestrator` in `app/agents/orchestrator.py`. The orchestrator executes small agents in order:
+
+```text
+DataProfilerAgent
+PreprocessingAgent
+ModelingAgent
+ModelAuditAgent
+ReportAgent
+InsightAgent
+```
+
+Each response includes a non-breaking trace field:
+
+```text
+agent_trace
+```
+
+The structured report also includes:
+
+```text
+report.agent_workflow
+```
+
+These fields are for traceability and do not replace existing response fields. Existing report sections, legacy fields, rule-based insights, and optional DeepInfra `report.agent_insights` remain available.
+
 ## AutoMind-style Report Response
 
 Version 2 adds a structured `report` object while keeping the older top-level fields for backward compatibility.
@@ -229,6 +257,7 @@ charts
 insight
 warnings
 legacy
+agent_trace
 ```
 
 ## Chart-ready JSON
