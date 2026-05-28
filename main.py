@@ -144,7 +144,7 @@ def predict_heart_disease(
             "test_rows": len(get_heart_disease_test_records()) if not incoming_records else 0,
             "test_predictions_included": False,
             "note": (
-                "The prepared unlabeled heart_test.csv is loaded for availability checks, "
+                "The prepared unlabeled Heart Disease test dataset is loaded for availability checks, "
                 "but prediction-only test output is deferred until the pipeline exposes a fitted model."
             ),
         }

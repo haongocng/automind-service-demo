@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -74,6 +75,7 @@ def ecommerce_good_review_records() -> List[Dict[str, Any]]:
 
 
 HEART_DISEASE_DIR = Path(__file__).resolve().parents[2] / "examples" / "heart_disease"
+HEART_DISEASE_SQLITE = HEART_DISEASE_DIR / "heart_disease.sqlite"
 
 
 def load_csv_records(path: str | Path) -> List[Dict[str, Any]]:
@@ -87,15 +89,32 @@ def load_csv_records(path: str | Path) -> List[Dict[str, Any]]:
     return records
 
 
-def get_heart_disease_train_records() -> List[Dict[str, Any]]:
-    """Load labeled Heart Disease training records."""
+def load_sqlite_table_records(db_path: str | Path, table_name: str) -> List[Dict[str, Any]]:
+    """Load a SQLite table into JSON-style records."""
 
+    db_file = Path(db_path)
+    if not db_file.exists():
+        raise FileNotFoundError(f"SQLite database not found: {db_file}")
+
+    with sqlite3.connect(db_file) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(f'SELECT * FROM "{table_name}"').fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_heart_disease_train_records() -> List[Dict[str, Any]]:
+    """Load labeled Heart Disease training records, preferring SQLite over CSV."""
+
+    if HEART_DISEASE_SQLITE.exists():
+        return load_sqlite_table_records(HEART_DISEASE_SQLITE, "heart_train")
     return load_csv_records(HEART_DISEASE_DIR / "heart_train.csv")
 
 
 def get_heart_disease_test_records() -> List[Dict[str, Any]]:
-    """Load unlabeled Heart Disease test records for a later prediction-only step."""
+    """Load unlabeled Heart Disease test records, preferring SQLite over CSV."""
 
+    if HEART_DISEASE_SQLITE.exists():
+        return load_sqlite_table_records(HEART_DISEASE_SQLITE, "heart_test")
     return load_csv_records(HEART_DISEASE_DIR / "heart_test.csv")
 
 

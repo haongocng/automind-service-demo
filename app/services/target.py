@@ -39,6 +39,7 @@ def apply_target_transform(
     summary = {
         "original_target_column": target_column,
         "transformed_target_column": transformed_name,
+        "target_column": transformed_name,
         "class_distribution": distribution,
     }
     return target, transformed_name, summary, warnings

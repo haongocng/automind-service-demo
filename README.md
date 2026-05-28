@@ -65,14 +65,33 @@ curl -X POST http://localhost:8000/predict/ecommerce-good-review \
 
 ## Run Heart Disease Classification Demo
 
-Prepared dataset files:
+Prepared dataset storage:
+
+```text
+examples/heart_disease/heart_disease.sqlite
+```
+
+The SQLite database contains two tables:
+
+```text
+heart_train
+heart_test
+```
+
+The source CSV files are kept as fallback inputs:
 
 ```text
 examples/heart_disease/heart_train.csv
 examples/heart_disease/heart_test.csv
 ```
 
-The training file contains labeled rows with target column:
+Regenerate the SQLite database from CSV files with:
+
+```bash
+./avenv/bin/python scripts/create_heart_disease_sqlite.py
+```
+
+The training table contains labeled rows with target column:
 
 ```text
 HeartDisease
