@@ -9,6 +9,7 @@ from app.services.charting import (
     numeric_summary_chart,
     prediction_distribution_chart,
 )
+from app.services.domain_metadata import format_target_label
 
 
 def build_prediction_report(
@@ -23,13 +24,22 @@ def build_prediction_report(
     top_features: List[Dict[str, Any]],
     sample_predictions: List[Dict[str, Any]],
     warnings: List[str],
+    target_metadata: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """Build an AutoMind-style structured report for frontend rendering."""
 
-    class_distribution = _named_class_distribution(target_summary.get("class_distribution", {}))
+    target_metadata = target_metadata or {}
+    class_distribution = _named_class_distribution(
+        target_summary.get("class_distribution", {}),
+        target_metadata,
+    )
     missing_values = dataset_summary.get("missing_values", {})
     eda_charts = [
-        class_distribution_chart(class_distribution),
+        class_distribution_chart(
+            class_distribution,
+            title=target_metadata.get("distribution_title", "Target Distribution"),
+            description=target_metadata.get("target_description", "Distribution of target labels."),
+        ),
         missing_values_chart(missing_values),
         numeric_summary_chart(dataset_summary),
     ]
@@ -44,7 +54,7 @@ def build_prediction_report(
     executive_summary = _executive_summary(task_label, dataset_summary, metrics, top_features, warnings)
     eda_summary = _eda_summary(dataset_summary, class_distribution, missing_values)
     key_insights = _key_insights(metrics, top_features, class_distribution, warnings)
-    recommendations = _recommendations(top_features, warnings)
+    recommendations = _recommendations(top_features, warnings, target_metadata)
 
     report = {
         "title": title,
@@ -76,7 +86,7 @@ def build_prediction_report(
             "charts": prediction_charts,
         },
         "model_audit": {
-            "note": "Metrics are computed on a held-out validation split and are used only to audit the demo model.",
+            "note": "Metrics are computed on a held-out validation split and should be interpreted as model assessment evidence.",
             "metrics": {key: value for key, value in metrics.items() if key != "confusion_matrix"},
             "confusion_matrix": metrics.get("confusion_matrix", []),
             "charts": audit_charts,
@@ -84,6 +94,7 @@ def build_prediction_report(
         "recommendations": recommendations,
         "warnings": warnings,
         "limitations": limitations,
+        "target_metadata": target_metadata,
     }
     report["report_markdown"] = render_report_markdown(report)
     return report
@@ -155,11 +166,21 @@ def render_report_markdown(report: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _named_class_distribution(distribution: Dict[str, int]) -> List[Dict[str, Any]]:
+def _named_class_distribution(
+    distribution: Dict[str, int],
+    target_metadata: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    target_column = str(target_metadata.get("target_column", ""))
     if "0" in distribution or "1" in distribution:
         return [
-            {"label": "Bad review", "value": int(distribution.get("0", 0))},
-            {"label": "Good review", "value": int(distribution.get("1", 0))},
+            {
+                "label": format_target_label(0, target_column, metadata=target_metadata),
+                "value": int(distribution.get("0", 0)),
+            },
+            {
+                "label": format_target_label(1, target_column, metadata=target_metadata),
+                "value": int(distribution.get("1", 0)),
+            },
         ]
     return [{"label": str(label), "value": int(value)} for label, value in distribution.items()]
 
@@ -176,7 +197,7 @@ def _executive_summary(
     feature_text = _feature_text(top_features)
     summary = [
         f"AutoMind analyzed {rows} row-level records for the {task_label} task.",
-        f"The validation audit reports {selected_metric}; these are demo validation metrics, not production guarantees.",
+        f"The validation audit reports {selected_metric}; use this as directional model assessment evidence.",
     ]
     if feature_text:
         summary.append(f"The strongest model signals are {feature_text}.")
@@ -222,24 +243,44 @@ def _key_insights(
     return insights
 
 
-def _recommendations(top_features: List[Dict[str, Any]], warnings: List[str]) -> List[str]:
+def _recommendations(
+    top_features: List[Dict[str, Any]],
+    warnings: List[str],
+    target_metadata: Dict[str, Any],
+) -> List[str]:
+    domain_name = str(target_metadata.get("domain_name", "")).lower()
+    target_column = str(target_metadata.get("target_column", "")).lower()
+    is_heart = "heart" in domain_name or target_column == "heartdisease"
+
+    if is_heart:
+        recommendations = [
+            "Use this report as analytical model assessment evidence, not as a clinical decision system.",
+            "Review the strongest features with domain experts to confirm whether the learned patterns are plausible.",
+            "Validate model behavior on external holdout data and assess calibration before clinical use.",
+        ]
+        if top_features:
+            recommendations.append(f"Prioritize feature review for {_feature_text(top_features[:3])}.")
+        if warnings:
+            recommendations.append("Review data and modeling warnings before interpreting the result further.")
+        return recommendations
+
     recommendations = [
-        "Use this report as a demo validation result, not as a production decision system.",
-        "Render the chart-ready JSON in the WrenAI frontend to make model behavior easier to inspect.",
+        "Use this report as analytical model assessment evidence before applying the result to repeated decisions.",
+        "Review target distribution, validation metrics, and feature importance together to interpret model behavior.",
     ]
     if top_features:
-        recommendations.append(f"Investigate operational drivers related to {_feature_text(top_features[:3])}.")
+        recommendations.append(f"Investigate operational patterns related to {_feature_text(top_features[:3])}.")
     if warnings:
-        recommendations.append("Address warnings before expanding this workflow to real WrenAI query results.")
+        recommendations.append("Address data and modeling warnings before expanding this workflow to recurring analysis.")
     return recommendations
 
 
 def _limitations() -> List[str]:
     return [
-        "The current demo may use sample or synthetic records.",
-        "Metrics are calculated on a validation split and should not be interpreted as production performance.",
-        "LLM InsightAgent is optional; rule-based report synthesis remains the fallback.",
-        "The service returns chart-ready JSON, but visual chart rendering must be implemented in the frontend.",
+        "Metrics are calculated on a validation split and should be validated on fresh holdout data before operational use.",
+        "Feature importance describes model behavior and should not be interpreted as causal evidence.",
+        "Narrative insights summarize structured metrics and should be reviewed with domain context.",
+        "Model behavior can shift when data distributions, labels, or collection processes change.",
     ]
 
 

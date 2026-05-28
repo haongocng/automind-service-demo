@@ -24,11 +24,15 @@ def make_bar_chart(
     }
 
 
-def class_distribution_chart(data: List[Dict[str, Any]]) -> Dict[str, Any]:
+def class_distribution_chart(
+    data: List[Dict[str, Any]],
+    title: str = "Target Distribution",
+    description: str = "Distribution of target labels.",
+) -> Dict[str, Any]:
     return make_bar_chart(
         chart_id="class_distribution",
-        title="Good vs Bad Review Distribution",
-        description="Distribution of transformed review labels.",
+        title=title,
+        description=description,
         data=data,
         x="label",
     )

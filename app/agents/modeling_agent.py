@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 import pandas as pd
 
 from app.agents.base import BaseAgent
+from app.services.domain_metadata import format_target_label
 from app.services.modeling import train_and_evaluate
 
 
@@ -40,11 +41,10 @@ class ModelingAgent(BaseAgent):
         counts = y.value_counts().sort_index()
         items: List[Dict[str, Any]] = []
         for label, count in counts.items():
-            if target_name == "good_review":
-                name = "Good review" if int(label) == 1 else "Bad review"
-            elif target_name == "HeartDisease":
-                name = "Heart disease" if int(label) == 1 else "No heart disease"
-            else:
-                name = f"Class {label}"
-            items.append({"label": name, "value": int(count)})
+            items.append(
+                {
+                    "label": format_target_label(label, target_name),
+                    "value": int(count),
+                }
+            )
         return items

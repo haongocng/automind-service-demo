@@ -9,12 +9,12 @@ def generate_insight(
     top_features: List[Dict[str, Any]],
     warnings: List[str],
 ) -> str:
-    """Generate a short rule-based business insight."""
+    """Generate a short rule-based analyst insight."""
 
     if not metrics:
         if warnings:
-            return "The prediction pipeline could not train a reliable model yet. Review the data quality warnings before using this result."
-        return "The prediction pipeline did not produce model metrics."
+            return "Model metrics are unavailable for this run. Review the data quality warnings before interpreting the result."
+        return "Model metrics are unavailable for this run."
 
     feature_names = [item["feature"] for item in top_features[:3]]
     if "f1" in metrics:
@@ -28,7 +28,7 @@ def generate_insight(
         feature_text = ", ".join(feature_names)
         return (
             f"{opening} The most influential signals were {feature_text}. "
-            "This suggests these factors are useful starting points for explaining the predicted outcome."
+            "These factors are useful starting points for interpreting model behavior."
         )
 
     return f"{opening} Feature importance was not available for the selected model."

@@ -4,19 +4,11 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+from app.services.domain_metadata import format_target_label
+
 
 def format_label(value: Any, target_name: str, predicted: bool = False) -> str:
-    prefix = "Predicted " if predicted else ""
-    try:
-        numeric_value = int(value)
-    except (TypeError, ValueError):
-        return f"{prefix}{value}"
-
-    if target_name == "good_review":
-        return f"{prefix}{'Good review' if numeric_value == 1 else 'Bad review'}"
-    if target_name == "HeartDisease":
-        return f"{prefix}{'Heart disease' if numeric_value == 1 else 'No heart disease'}"
-    return f"{prefix}Class {numeric_value}"
+    return format_target_label(value, target_name, predicted=predicted)
 
 
 def build_sample_predictions(

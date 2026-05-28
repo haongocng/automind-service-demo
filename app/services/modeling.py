@@ -20,6 +20,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 
+from app.services.domain_metadata import format_target_label
 from app.services.predictions import build_sample_predictions
 
 
@@ -216,12 +217,7 @@ def _distribution_chart(values, target_name: str, observed: bool) -> List[Dict[s
 
 
 def _class_label(label: Any, target_name: str, observed: bool) -> str:
-    prefix = "" if observed else "Predicted "
-    if target_name == "good_review":
-        return f"{prefix}{'Good review' if int(label) == 1 else 'Bad review'}"
-    if target_name == "HeartDisease":
-        return f"{prefix}{'Heart disease' if int(label) == 1 else 'No heart disease'}"
-    return f"{prefix}Class {label}"
+    return format_target_label(label, target_name, predicted=not observed)
 
 
 def _feature_importance(pipeline: Pipeline, top_n: int = 10) -> List[Dict[str, Any]]:
