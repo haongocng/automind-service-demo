@@ -33,6 +33,7 @@ class ModelingResult:
     top_features: List[Dict[str, Any]]
     sample_predictions: List[Dict[str, Any]]
     warnings: List[str]
+    fitted_pipeline: Optional[Pipeline] = None
 
 
 def train_and_evaluate(
@@ -133,6 +134,7 @@ def train_and_evaluate(
         top_features=top_features,
         sample_predictions=sample_predictions,
         warnings=warnings,
+        fitted_pipeline=best_pipeline,
     )
 
 
@@ -267,4 +269,5 @@ def _empty_result(warnings: List[str]) -> ModelingResult:
         top_features=[],
         sample_predictions=[],
         warnings=warnings,
+        fitted_pipeline=None,
     )

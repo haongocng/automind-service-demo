@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas import HealthResponse, PredictionRequest
@@ -11,6 +11,7 @@ from app.services.automind_agent import (
     ecommerce_good_review_request,
     heart_disease_request,
 )
+from app.services.custom_prediction import run_uploaded_prediction
 from app.services.demo_data import (
     ecommerce_good_review_records,
     get_heart_disease_train_records,
@@ -103,6 +104,35 @@ def predict_ecommerce_good_review(
         return result
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/predict/upload")
+async def predict_upload(
+    train_file: UploadFile = File(...),
+    test_file: Optional[UploadFile] = File(default=None),
+    target_column: str = Form(...),
+    task_type: str = Form(default="auto"),
+    prediction_goal: Optional[str] = Form(default=None),
+    domain_name: Optional[str] = Form(default=None),
+):
+    """Run AutoMind on an uploaded train CSV and optional test CSV."""
+
+    try:
+        return await run_uploaded_prediction(
+            pipeline=pipeline,
+            train_file=train_file,
+            test_file=test_file,
+            target_column=target_column,
+            task_type=task_type,
+            prediction_goal=prediction_goal,
+            domain_name=domain_name,
+        )
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Upload prediction failed") from exc
 
 
 HEART_DISEASE_LIMITATIONS = [
