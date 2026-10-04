@@ -168,7 +168,7 @@ def _regression_candidates():
 def _selection_score(y_true, predictions, task_type: str) -> float:
     if task_type == "classification":
         return f1_score(y_true, predictions, zero_division=0)
-    rmse = mean_squared_error(y_true, predictions, squared=False)
+    rmse = np.sqrt(mean_squared_error(y_true, predictions))
     return -rmse
 
 
@@ -189,7 +189,7 @@ def _audit_predictions(y_true, predictions, task_type: str, target_name: str):
         }
         return metrics, charts
 
-    rmse = mean_squared_error(y_true, predictions, squared=False)
+    rmse = np.sqrt(mean_squared_error(y_true, predictions))
     metrics = {
         "mae": round(float(mean_absolute_error(y_true, predictions)), 4),
         "rmse": round(float(rmse), 4),

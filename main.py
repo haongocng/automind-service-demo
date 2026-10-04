@@ -18,6 +18,8 @@ from app.services.demo_data import (
     get_heart_disease_test_records,
 )
 from app.services.report import render_report_markdown
+from app.services.exploration_analysis import ExplorationRequest, analyze_exploration
+from app.services.task_analysis import TaskRequest, analyze_task
 
 VERSION = "0.1.0"
 
@@ -61,6 +63,15 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok", service="AutoMind-service", version=VERSION)
 
 
+@app.post("/analyze/exploration")
+def exploration_analysis(request: ExplorationRequest):
+    """Describe frozen full-population evidence supplied by the Wren data adapter."""
+    try:
+        return analyze_exploration(request)
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/predict")
 def predict(request: PredictionRequest):
     """Generic reusable endpoint for future domains such as HeartDisease."""
@@ -68,6 +79,21 @@ def predict(request: PredictionRequest):
     try:
         return pipeline.run(request, task_label=request.metadata.get("task", "Prediction"))
     except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/analyze/capabilities")
+def analysis_capabilities():
+    return {"exploration": True, "clustering": True, "classification": True,
+            "regression": True, "automaticSplit": True, "separateDatasets": True,
+            "autoClusters": True, "maxMlRows": 20000}
+
+
+@app.post("/analyze/task")
+def task_analysis(request: TaskRequest):
+    try:
+        return analyze_task(request)
+    except (ValueError, KeyError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

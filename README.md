@@ -23,15 +23,15 @@ The core pipeline is generic and now also includes a prepared Heart Disease clas
 ## Setup
 
 ```bash
-python3 -m venv avenv
-source avenv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
 ## Run
 
 ```bash
-./avenv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+bash scripts/start_backend.sh
 ```
 
 Open API docs:
@@ -39,6 +39,111 @@ Open API docs:
 ```text
 http://localhost:8000/docs
 ```
+
+## Recovered WrenAI frontend
+
+The frontend lives in a separate repository:
+[haongocng/WrenAI, branch automind-prediction-demo](https://github.com/haongocng/WrenAI/tree/automind-prediction-demo).
+The recovered checkout is in `WrenAI/`, with the Next.js frontend in `WrenAI/wren-ui/`.
+
+After the local dependencies have been installed, run these commands from this
+repository in **two separate terminals**:
+
+```bash
+# Terminal 1: Python backend, using venv; LLM insights disabled by default
+bash scripts/start_backend.sh
+```
+
+```bash
+# Terminal 2: WrenAI frontend, using the local Node 20 runtime
+bash scripts/start_frontend.sh
+```
+
+For a demo using an existing production build, start the frontend with
+`WREN_UI_MODE=production bash scripts/start_frontend.sh`. The default remains
+development mode; rebuild the frontend after code changes before using production mode.
+
+Open **http://127.0.0.1:3001/**. The frontend script defaults to **data-only mode**:
+it caches the nine original WrenAI E-commerce Parquet files, then uses the
+existing native DuckDB library with two threads and a 512 MiB database memory
+limit. No Docker, Ollama or LLM API key is needed for this mode. Node/Next.js
+and AutoMind consume additional memory beyond that DuckDB limit.
+
+On first use, select **E-commerce** under **Play around with sample data**.
+WrenAI saves the models and relationships, then opens **Home / Data explorer**
+with real data, a preview table and initial charts. The recovered local project contains
+9 models, 9 relationships and 99,441 orders; it was initialized using the
+sample selected by the user, not restored from the inaccessible server.
+
+Use **Back to datasets** (http://127.0.0.1:3001/home/datasets) to choose the
+connected source, explore an individual model, or import a local CSV. Import
+opens the explorer immediately and preserves the connected E-commerce source.
+Filters, saved chart definitions, Rows/Fields and pagination use real queries.
+**Analyze with AutoMind** saves the Explorer state and opens the full-page
+**Analysis setup**. Choose Data exploration, Clustering, Classification or
+Regression; only **Run analysis** starts work. Results open in a wide
+**Analysis report** and remain in **Saved analyses**, with frozen evidence.
+Supervised tasks default to an automatic split and require a verified target;
+models are selected using training-only folds before final holdout evaluation.
+ML tasks process the entire selected scope, up to 20,000 rows. Exploration
+uses full-population SQL aggregates. No Ollama or LLM API is required for these
+four tasks. This is a bounded AutoMind-style integration, not the complete
+paper implementation. See [Analysis implementation and screenshots](docs/ANALYSIS_IMPLEMENTATION.md).
+
+The existing ML demos remain at
+**http://127.0.0.1:3001/automind-prediction**. **Run Prediction from WrenAI Data**
+queries 1,000 sample records for the existing prediction task.
+AI chat, AI deployment/indexing and LLM-generated commentary are disabled in
+this mode. Advanced MDL calculated fields and implicit relationship traversal
+require the regular Wren Engine; basic model/column aliases and explicit SQL
+joins work locally.
+
+All navigation pages remain accessible in data-only mode: Data explorer, Data chat, Dashboard,
+Knowledge (question-SQL pairs and instructions), API history, Modeling and
+AutoMind. Knowledge forms can be opened and their SQL preview works locally.
+AI chat, question generation and saving/indexing Knowledge require the AI
+service; the affected controls show that requirement instead of blocking pages.
+
+The frontend script applies SQLite migrations before starting Next.js. Metadata
+is persisted in `WrenAI/wren-ui/db.sqlite3`; source data is persisted in
+`.local/wren-data/wren.duckdb`. Existing downloads are reused on restart.
+Press `Ctrl+C` in each terminal to stop.
+
+See [the explorer implementation and verification guide](docs/EXPLORER_IMPLEMENTATION.md)
+for changed files, analysis limitations, CSV details and screenshots.
+
+For a configured full WrenAI stack, use
+`WREN_DATA_ONLY_MODE=false bash scripts/start_frontend.sh`. That mode uses the
+regular remote Engine/AI/Ibis services and a configured LLM/embedding provider.
+Ollama is one optional provider. See `docs/WRENAI_RUN_GUIDE.md` for the two modes.
+
+The recovered GitHub branch includes the E-commerce and Heart Disease demo
+interface. The **Custom Prediction / CSV upload** form visible in the thesis
+screenshots is absent from this branch and its available commit history; its
+original frontend source has not been recovered. The current AutoMind backend
+does already expose `POST /predict/upload`.
+
+For a fresh machine, first complete the Python setup above, then restore the
+frontend dependencies with:
+
+```bash
+git clone --single-branch --branch automind-prediction-demo https://github.com/haongocng/WrenAI.git WrenAI
+git -C WrenAI apply ../scripts/wrenai-data-only.patch
+npm install --prefix .local/node-runtime --cache .local/npm-cache --no-audit --no-fund --package-lock=false node@20.20.2
+cd WrenAI/wren-ui
+export PATH="$PWD/../../.local/node-runtime/node_modules/node/bin:$PATH"
+export YARN_ENABLE_GLOBAL_CACHE=false
+export YARN_CACHE_FOLDER="$PWD/../../.local/yarn-cache"
+export YARN_GLOBAL_FOLDER="$PWD/../../.local/yarn-global"
+node .yarn/releases/yarn-4.5.3.cjs install --immutable
+```
+
+`WrenAI/` is an independent Git checkout and `.local/` contains the runtime and
+package caches; both are ignored by this backend repository. The local frontend
+changes, including the explorer, are preserved in `scripts/wrenai-data-only.patch`
+so a fresh clone can reproduce this implementation. Do not apply that patch
+twice to this checkout. Local databases and imported CSV datasets are separate
+from the source patch; back up both database files to preserve them.
 
 ## Health Check
 
@@ -88,7 +193,7 @@ examples/heart_disease/heart_test.csv
 Regenerate the SQLite database from CSV files with:
 
 ```bash
-./avenv/bin/python scripts/create_heart_disease_sqlite.py
+./venv/bin/python scripts/create_heart_disease_sqlite.py
 ```
 
 The training table contains labeled rows with target column:
@@ -347,11 +452,13 @@ examples/ecommerce_good_review_response_example.json
 
 FastAPI Swagger UI only displays JSON. It will not render charts visually.
 
-A future WrenAI frontend page should:
+The recovered page is `WrenAI/wren-ui/src/pages/automind-prediction.tsx`.
+It calls Next.js API routes in `src/pages/api/automind/`, which proxy requests to
+this FastAPI backend. The chart renderer is
+`src/components/pages/automind/AutoMindChart.tsx` and uses Vega.
 
-1. Call `POST /predict/ecommerce-good-review`
-2. Render `report.model_audit.charts[0]` as feature importance
-3. Render `report.eda.charts` for EDA charts
-4. Render `report.prediction_results.charts` for prediction distribution
-5. Show `report.prediction_results.sample_predictions` as a compact table
-6. Show `report.report_markdown` or render the structured report sections directly
+The interface renders an Insight Report first, then expandable Detailed Agent
+Reports. It uses `report.eda.charts` for EDA,
+`report.prediction_results.charts` for feature importance and prediction charts,
+and `report.model_audit.charts` for model audit charts. It also displays sample
+predictions, metrics, the agent execution trace and the Markdown report.

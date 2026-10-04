@@ -18,7 +18,9 @@ __pycache__/
 .ruff_cache/
 
 # Local docs / working notes
-docs/
+docs/*
+docs/EXPLORER_IMPLEMENTATION.md
+docs/explorer-screenshots/
 
 # OS / editor
 .DS_Store
@@ -26,3 +28,7 @@ docs/
 .idea/
 data/
 examples/heart_disease/
+
+# Recovered WrenAI checkout and local Node runtime / package caches
+WrenAI/ 
+.local/
