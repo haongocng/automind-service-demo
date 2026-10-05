@@ -32,3 +32,6 @@ examples/heart_disease/
 # Recovered WrenAI checkout and local Node runtime / package caches
 WrenAI/ 
 .local/
+tmp/
+output/
+

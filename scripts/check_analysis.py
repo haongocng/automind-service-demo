@@ -35,6 +35,7 @@ def main():
     training = next(d["id"] for d in catalog["datasets"] if d["name"] == "Heart training data")
     test = next(d["id"] for d in catalog["datasets"] if d["name"] == "Heart test data")
     customers = next(d["id"] for d in catalog["datasets"] if d["name"] == "Customers")
+    education = next(d["id"] for d in catalog["datasets"] if d["name"] == "Edudata_English")
     source = setup(training)
     assert source["profile"]["rowCount"] == 734
     assert source["capabilities"]["classification"]
@@ -64,22 +65,39 @@ def main():
     restored = api({"action": "analysis.setup", "fromRun": classification["id"]})
     assert restored["drafts"]["classification"]["target"] == "HeartDisease"
     assert restored["restoredTask"] == "classification"
-    regression = run(run_input(source, "regression", {"target": "Age", "evaluation": "automatic", "split": "auto"}, "Predict Age and explain the prediction errors."))
+    education_source = setup(education)
+    target = 'I am willing to share my digital skills with other students'
+    assert education_source['profile']['rowCount'] == 1305
+    regression = run(run_input(education_source, "regression", {"target": target, "evaluation": "automatic", "split": "auto"}, "Predict willingness to share digital skills with other students on the recorded 1–5 survey scale, and explain prediction errors."))
+    assert regression['input']['config']['target'] == target
+    assert 'Timestamp' not in regression['report']['evaluation']['features']
+    assert regression['report']['evaluation']['strategy'] == 'group'
+    assert 'fractional prediction' in ' '.join(regression['report']['limitations'])
     customer_source = setup(customers)
     assert customer_source["profile"]["rowCount"] == 2000
     assert next(f for f in customer_source["context"]["fields"] if f["name"] == "CustomerID")["role"] == "identifier"
     clustering = run(run_input(customer_source, "clustering", {}, "Segment customers into groups with similar characteristics and explain their differences."))
     assert clustering["report"]["scope"]["rowCount"] == 2000
+    boxes = [v for v in clustering['report']['visuals'] if isinstance(v['chartSpec']['mark'], dict) and v['chartSpec']['mark']['type'] == 'boxplot']
+    assert len(boxes) >= 3
+    assert all(len(v['chartSpec']['data']['values']) == 2000 for v in boxes)
     sales = setup(f"project:{catalog['projectId']}", "sales")
     exploration = run(run_input(sales, "exploration", {"includeCharts": True}, "Explore item sales over time and compare order volumes across customer states."))
     assert exploration["report"]["scope"]["rowCount"] == sales["profile"]["rowCount"]
     assert abs(exploration["report"]["metrics"][2]["value"] - sales["profile"]["metrics"]["itemSales"]) < 0.01
+    for record in (exploration, clustering, classification, regression):
+        report = record['report']
+        assert len(report['insights']) >= 3
+        visual_ids = {v['id'] for v in report['visuals']}
+        assert all(set(i['evidenceIds']) <= visual_ids for i in report['insights'])
+        narrative = ' '.join(report['summary'] + report['limitations'] + [f['interpretation'] for f in report['findings']])
+        assert all(term not in narrative for term in ('SUM(', 'LLM', 'not the full AutoMind paper', 'existing ML stack'))
     result = {task: {"id": record["id"], "metrics": record["report"]["metrics"], "evaluation": record["report"].get("evaluation"), "rowCount": record["report"]["scope"]["rowCount"]} for task, record in [("exploration", exploration), ("classification", classification), ("regression", regression), ("clustering", clustering)]}
     output = Path(".local/analysis-check.json")
     output.parent.mkdir(exist_ok=True)
     output.write_text(json.dumps(result, indent=2))
     print(json.dumps(result, indent=2))
-    print("PASS: four real tasks; stale data, missing target, unlabelled test, idempotence, immutable report and rerun configuration.")
+    print("PASS: four real tasks; grounded insights; original-unit boxplots; chosen survey target; stale data, missing target, unlabelled test, idempotence, immutable report and rerun configuration.")
 
 if __name__ == "__main__":
     main()

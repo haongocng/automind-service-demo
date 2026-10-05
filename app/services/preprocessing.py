@@ -60,7 +60,7 @@ def prepare_features(
             dropped_columns.append(column)
             warnings.append(f"Dropped datetime column '{column}' in v1.")
             continue
-        if pd.api.types.is_object_dtype(df[column]) or pd.api.types.is_categorical_dtype(df[column]):
+        if pd.api.types.is_object_dtype(df[column]) or pd.api.types.is_string_dtype(df[column]) or isinstance(df[column].dtype, pd.CategoricalDtype):
             unique_count = int(df[column].nunique(dropna=True))
             if unique_count > high_cardinality_limit:
                 dropped_columns.append(column)

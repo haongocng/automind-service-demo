@@ -69,6 +69,11 @@ existing native DuckDB library with two threads and a 512 MiB database memory
 limit. No Docker, Ollama or LLM API key is needed for this mode. Node/Next.js
 and AutoMind consume additional memory beyond that DuckDB limit.
 
+The workspace uses **AutoMind** branding with a connected-A symbol and matching
+browser favicon. **Guidance** in the header opens
+**http://127.0.0.1:3001/guidance**: a short getting-started guide and four examples
+linked to the available E-commerce, Customers, Heart and Edudata_English datasets.
+
 On first use, select **E-commerce** under **Play around with sample data**.
 WrenAI saves the models and relationships, then opens **Home / Data explorer**
 with real data, a preview table and initial charts. The recovered local project contains
@@ -90,6 +95,13 @@ uses full-population SQL aggregates. No Ollama or LLM API is required for these
 four tasks. This is a bounded AutoMind-style integration, not the complete
 paper implementation. See [Analysis implementation and screenshots](docs/ANALYSIS_IMPLEMENTATION.md).
 
+Reports now lead with **Key insights**, link explanations to their visual evidence,
+and describe data-specific limitations. Customers includes original-unit boxplots;
+an unlabelled test selection offers **Use automatic split**. The imported
+**Edudata_English** regression draft uses the user-selected target
+`I am willing to share my digital skills with other students`.
+See [report updates, verified results and screenshots](docs/REPORT_INSIGHTS_UPDATE.md).
+
 The existing ML demos remain at
 **http://127.0.0.1:3001/automind-prediction**. **Run Prediction from WrenAI Data**
 queries 1,000 sample records for the existing prediction task.
@@ -100,7 +112,7 @@ joins work locally.
 
 All navigation pages remain accessible in data-only mode: Data explorer, Data chat, Dashboard,
 Knowledge (question-SQL pairs and instructions), API history, Modeling and
-AutoMind. Knowledge forms can be opened and their SQL preview works locally.
+Guidance. Knowledge forms can be opened and their SQL preview works locally.
 AI chat, question generation and saving/indexing Knowledge require the AI
 service; the affected controls show that requirement instead of blocking pages.
 

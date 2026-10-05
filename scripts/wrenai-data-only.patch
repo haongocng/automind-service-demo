@@ -193,7 +193,7 @@ index 6ad7384b..8d12de67 100644
      wrenAIBaseEndpoint: serverConfig.wrenAIEndpoint,
    });
 diff --git a/wren-ui/src/components/HeaderBar.tsx b/wren-ui/src/components/HeaderBar.tsx
-index 80a3d5ab..0a52bedc 100644
+index 80a3d5ab..69e5f2ab 100644
 --- a/wren-ui/src/components/HeaderBar.tsx
 +++ b/wren-ui/src/components/HeaderBar.tsx
 @@ -1,5 +1,6 @@
@@ -203,7 +203,40 @@ index 80a3d5ab..0a52bedc 100644
  import styled from 'styled-components';
  import LogoBar from '@/components/LogoBar';
  import { Path } from '@/utils/enum';
-@@ -33,6 +34,8 @@ const StyledHeader = styled(Header)`
+@@ -29,68 +30,98 @@ const StyledHeader = styled(Header)`
+   border-bottom: 1px solid var(--gray-5);
+   background: var(--gray-10);
+   padding: 10px 16px;
++
++  .header-content {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 24px;
++    height: 100%;
++  }
++  .header-primary {
++    display: flex;
++    align-items: center;
++    gap: 36px;
++    flex: 1;
++    min-width: 0;
++  }
++  nav {
++    min-width: 0;
++    overflow-x: auto;
++    scrollbar-width: none;
++  }
++  nav::-webkit-scrollbar {
++    display: none;
++  }
++  @media (max-width: 650px) {
++    padding-inline: 12px;
++    .header-primary {
++      gap: 20px;
++    }
++  }
+ `;
  
  export default function HeaderBar() {
    const router = useRouter();
@@ -212,36 +245,239 @@ index 80a3d5ab..0a52bedc 100644
    const { pathname } = router;
    const showNav = !pathname.startsWith(Path.Onboarding);
    const isModeling = pathname.startsWith(Path.Modeling);
-@@ -83,14 +86,27 @@ export default function HeaderBar() {
-                 shape="round"
-                 size="small"
-                 $isHighlight={pathname.startsWith(Path.AutoMindPrediction)}
+ 
+   return (
+     <StyledHeader>
+-      <div
+-        className="d-flex justify-space-between align-center"
+-        style={{ marginTop: -2 }}
+-      >
+-        <Space size={[48, 0]}>
++      <div className="header-content">
++        <div className="header-primary">
+           <LogoBar />
+           {showNav && (
+-            <Space size={[16, 0]}>
+-              <StyledButton
+-                shape="round"
+-                size="small"
+-                $isHighlight={pathname.startsWith(Path.Home)}
+-                onClick={() => router.push(Path.Home)}
+-              >
+-                Home
+-              </StyledButton>
+-              <StyledButton
+-                shape="round"
+-                size="small"
+-                $isHighlight={pathname.startsWith(Path.Modeling)}
+-                onClick={() => router.push(Path.Modeling)}
+-              >
+-                Modeling
+-              </StyledButton>
+-              <StyledButton
+-                shape="round"
+-                size="small"
+-                $isHighlight={pathname.startsWith(Path.Knowledge)}
+-                onClick={() => router.push(Path.KnowledgeQuestionSQLPairs)}
+-              >
+-                Knowledge
+-              </StyledButton>
+-              <StyledButton
+-                shape="round"
+-                size="small"
+-                $isHighlight={pathname.startsWith(Path.APIManagement)}
+-                onClick={() => router.push(Path.APIManagementHistory)}
+-              >
+-                API
+-              </StyledButton>
+-              <StyledButton
+-                shape="round"
+-                size="small"
+-                $isHighlight={pathname.startsWith(Path.AutoMindPrediction)}
 -                onClick={() => router.push(Path.AutoMindPrediction)}
-+                onClick={() =>
-+                  router.push({
-+                    pathname: '/home',
-+                    query: {
-+                      ...(router.query.dataset
-+                        ? {
-+                            dataset: router.query.dataset,
-+                            view: router.query.view,
-+                          }
-+                        : {}),
-+                      analysis: '1',
-+                    },
-+                  })
-+                }
-               >
-                 AutoMind
-               </StyledButton>
-             </Space>
+-              >
+-                AutoMind
+-              </StyledButton>
+-            </Space>
++            <nav aria-label="Main navigation">
++              <Space size={[16, 0]}>
++                <StyledButton
++                  shape="round"
++                  size="small"
++                  $isHighlight={pathname.startsWith(Path.Home)}
++                  onClick={() => router.push(Path.Home)}
++                >
++                  Home
++                </StyledButton>
++                <StyledButton
++                  shape="round"
++                  size="small"
++                  $isHighlight={pathname.startsWith(Path.Modeling)}
++                  onClick={() => router.push(Path.Modeling)}
++                >
++                  Modeling
++                </StyledButton>
++                <StyledButton
++                  shape="round"
++                  size="small"
++                  $isHighlight={pathname.startsWith(Path.Knowledge)}
++                  onClick={() => router.push(Path.KnowledgeQuestionSQLPairs)}
++                >
++                  Knowledge
++                </StyledButton>
++                <StyledButton
++                  shape="round"
++                  size="small"
++                  $isHighlight={pathname.startsWith(Path.APIManagement)}
++                  onClick={() => router.push(Path.APIManagementHistory)}
++                >
++                  API
++                </StyledButton>
++                <StyledButton
++                  shape="round"
++                  size="small"
++                  $isHighlight={pathname.startsWith(Path.Guidance)}
++                  onClick={() => router.push(Path.Guidance)}
++                >
++                  Guidance
++                </StyledButton>
++              </Space>
++            </nav>
            )}
-         </Space>
+-        </Space>
 -        {isModeling && (
++        </div>
 +        {isModeling && !dataOnlyMode && (
            <Space size={[16, 0]}>
              <Deploy />
            </Space>
+diff --git a/wren-ui/src/components/Logo.tsx b/wren-ui/src/components/Logo.tsx
+index 4b95aba5..4f3c4204 100644
+--- a/wren-ui/src/components/Logo.tsx
++++ b/wren-ui/src/components/Logo.tsx
+@@ -3,28 +3,30 @@ interface Props {
+   color?: string;
+ }
+ 
+-export const Logo = (props: Props) => {
+-  const { color = 'var(--gray-9)', size = 30 } = props;
+-  return (
+-    <svg
+-      style={{ width: size, height: 'auto' }}
+-      viewBox="0 0 30 30"
+-      fill="none"
+-      xmlns="http://www.w3.org/2000/svg"
+-      shapeRendering="geometricPrecision"
+-    >
+-      <path
+-        d="M15.8023 7.82981C16.2779 8.98701 16.0102 10.1784 15.2043 10.491C14.3983 10.8035 13.3594 10.1187 12.8838 8.96153C12.4082 7.80433 12.676 6.61289 13.4819 6.30038C14.2878 5.98786 15.3267 6.67261 15.8023 7.82981Z"
+-        fill={color}
+-      />
+-      <path
+-        d="M29.2498 21.952C29.6972 22.4662 30.06 23.0215 29.9917 23.685C29.9234 24.3486 29.3086 24.614 28.8987 24.6804C28.4888 24.7467 20.4276 25.8084 19.5396 25.8748C18.7537 25.9335 18.6097 25.8363 18.303 25.6293C18.1647 25.5398 15.0158 22.5446 13.4586 21.0582C12.69 20.502 11.9941 20.0605 11.5031 19.8762C11.0511 19.7065 10.8708 19.0927 11.2918 18.7366L12.3395 17.8503C12.6148 17.6175 13.0379 17.6319 13.2922 17.9027C13.5897 18.1624 14.5664 19.2307 15.0176 19.7324C16.4453 21.0988 18.1849 22.7674 19.1297 23.685C19.8811 23.9504 21.6801 23.6187 22.0672 23.486C22.0672 23.486 19.4312 20.2141 18.8919 19.8065C18.3525 19.3989 17.8676 19.0849 17.4905 18.9339C16.7022 18.5185 17.059 17.9764 17.336 17.7573L18.4758 16.9463C18.7522 16.7496 19.1457 16.7781 19.3852 17.0359C20.803 18.8099 23.7888 22.4906 24.3899 23.0215C25.1414 23.2869 26.8948 22.9994 27.3274 22.8224L21.8995 16.0762C21.0284 15.3386 20.2227 14.7346 19.6677 14.5037C19.2263 14.3201 19.0551 13.6941 19.5023 13.3497L20.6563 12.4606C20.8517 12.3422 21.3174 12.1979 21.6163 12.5686L22.4088 13.5326L29.2498 21.952Z"
+-        fill={color}
+-      />
+-      <path
+-        d="M11.8478 1.99067C10.5707 1.99067 9.16387 2.29138 7.65774 3.03904C4.50493 4.60413 2.85603 7.82981 2.33475 10.202C1.60286 13.5326 2.02008 17.0359 3.22442 19.2504C4.07463 20.8137 4.76646 21.6232 6.14326 22.773C8.22894 24.5149 9.81294 25.2866 12.5342 25.6205C13.3997 25.7267 14.7668 25.6858 14.7668 25.6858C15.0555 25.6943 15.3305 25.807 15.5383 26.0018L16.946 27.322L18.5323 28.7087C18.8115 28.9528 18.6338 29.4028 18.2581 29.4028H16.4788C16.1959 29.4028 15.9415 29.1595 15.8496 29.0378C15.2849 28.4856 14.3617 27.6654 14.3617 27.6654L12.5949 27.6134L12.0702 29.601C12.0082 29.8358 11.7904 30 11.5408 30H10.8359C10.4826 30 10.2222 29.6793 10.3044 29.3456L10.7754 27.4341C10.4111 27.3614 10.0218 27.2603 9.62389 27.1204L8.89011 29.615C8.82307 29.8429 8.60863 30 8.36462 30H7.57716C7.21754 30 6.95595 29.6684 7.04944 29.3312L7.88561 26.3144C6.21075 25.5469 4.73704 24.2212 4.73704 24.2212C3.61206 23.3518 2.40208 21.6625 1.93772 20.9265C0.758197 18.9403 0.394862 17.7438 0.0906286 15.4688C-0.12877 13.8281 0.0906362 11.06 0.319969 9.83744C1.19531 6.30038 2.88436 3.2418 6.58906 1.34044C8.46832 0.375947 10.2771 0 11.8478 0C13.447 0 15.5446 0.508003 17.1081 1.30947C18.6578 2.10386 19.4247 2.82829 20.4677 3.84627C20.795 4.1666 21.6271 4.79496 22.3369 4.74577C22.7866 4.80486 24.0471 4.75887 25.4919 4.10215C26.2394 3.83912 26.7594 4.35638 26.9213 4.63196C27.103 4.91761 27.3006 5.6137 26.6372 6.11287L21.7843 9.76476C21.5609 10.1265 21.3962 10.4625 21.3325 10.7478C21.1055 11.6585 20.3487 11.25 20.057 11.06C19.7653 10.87 19.0996 9.90218 19.0996 9.90218C18.8562 9.60785 18.9128 9.17176 19.2335 8.94832C19.5878 8.70146 20.7613 7.88917 21.6518 7.34629L22.4617 6.73683C21.868 6.78175 20.3598 6.55944 19.0768 5.3108C19.0768 5.3108 17.441 3.72084 16.1516 3.07001C14.6097 2.29178 13.0964 1.99067 11.8478 1.99067Z"
+-        fill={color}
+-      />
+-    </svg>
+-  );
+-};
++// The connected A is shared by the wordmark and compact assistant icons.
++export const Logo = ({ color = 'var(--gray-9)', size = 30 }: Props) => (
++  <svg
++    width={size}
++    height={size}
++    viewBox="0 0 32 32"
++    fill="none"
++    xmlns="http://www.w3.org/2000/svg"
++    aria-hidden="true"
++    focusable="false"
++    style={{ display: 'block', flexShrink: 0 }}
++  >
++    <path
++      d="M7 24L16 7L25 24M10.7 17H21.3M16 17V24"
++      stroke={color}
++      strokeWidth="2.1"
++      strokeLinecap="round"
++      strokeLinejoin="round"
++    />
++    <g fill={color}>
++      <circle cx="16" cy="7" r="2.2" />
++      <circle cx="7" cy="24" r="2.2" />
++      <circle cx="16" cy="24" r="2.2" />
++      <circle cx="25" cy="24" r="2.2" />
++    </g>
++  </svg>
++);
+diff --git a/wren-ui/src/components/LogoBar.tsx b/wren-ui/src/components/LogoBar.tsx
+index 4b89c55d..528333c1 100644
+--- a/wren-ui/src/components/LogoBar.tsx
++++ b/wren-ui/src/components/LogoBar.tsx
+@@ -1,12 +1,55 @@
+-import Image from 'next/image';
++import Link from 'next/link';
++import styled from 'styled-components';
++import { Logo } from '@/components/Logo';
++import { Path } from '@/utils/enum';
++
++const Brand = styled(Link)`
++  display: inline-flex;
++  align-items: center;
++  gap: 10px;
++  flex-shrink: 0;
++  height: 32px;
++  color: #fff;
++  white-space: nowrap;
++  text-decoration: none;
++
++  .brand-mark {
++    display: flex;
++    width: 32px;
++    height: 32px;
++    border-radius: 9px;
++    background: linear-gradient(140deg, #3977ff 0%, #6c4de8 100%);
++    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
++  }
++  .brand-name {
++    font-size: 23px;
++    line-height: 1;
++    letter-spacing: -0.8px;
++    font-weight: 700;
++  }
++  .brand-name span {
++    color: #c4d3ff;
++    font-weight: 500;
++  }
++  &:hover {
++    color: #fff;
++  }
++  &:focus-visible {
++    outline: 2px solid #a9c2ff;
++    outline-offset: 5px;
++    border-radius: 4px;
++  }
++`;
+ 
+ export default function LogoBar() {
+   return (
+-    <Image
+-      src="/images/logo-white-with-text.svg"
+-      alt="Wren AI"
+-      width={125}
+-      height={30}
+-    />
++    <Brand href={Path.Home} aria-label="AutoMind home">
++      <span className="brand-mark">
++        <Logo size={32} color="#fff" />
++      </span>
++      <span className="brand-name">
++        Auto<span>Mind</span>
++      </span>
++    </Brand>
+   );
+ }
 diff --git a/wren-ui/src/components/chart/index.tsx b/wren-ui/src/components/chart/index.tsx
 index dfc81a7c..2589d21a 100644
 --- a/wren-ui/src/components/chart/index.tsx
@@ -743,6 +979,25 @@ index a2dc1c26..3825cac2 100644
  export { default as Col } from 'antd/lib/col';
  // export { default as Comment } from 'antd/lib/comment';
  // export { default as ConfigProvider } from 'antd/lib/config-provider';
+diff --git a/wren-ui/src/pages/_app.tsx b/wren-ui/src/pages/_app.tsx
+index 0b3b3765..f6ac6d6d 100644
+--- a/wren-ui/src/pages/_app.tsx
++++ b/wren-ui/src/pages/_app.tsx
+@@ -16,8 +16,12 @@ function App({ Component, pageProps }: AppProps) {
+   return (
+     <>
+       <Head>
+-        <title>Wren AI</title>
+-        <link rel="icon" href="/favicon.ico" />
++        <title>AutoMind</title>
++        <link
++          rel="icon"
++          type="image/svg+xml"
++          href="/images/automind-mark.svg"
++        />
+       </Head>
+       <GlobalConfigProvider>
+         <ApolloProvider client={apolloClient}>
 diff --git a/wren-ui/src/pages/api/automind/predict-from-wren.ts b/wren-ui/src/pages/api/automind/predict-from-wren.ts
 index da7d65e6..6eaaa713 100644
 --- a/wren-ui/src/pages/api/automind/predict-from-wren.ts
@@ -1734,6 +1989,18 @@ index 46eb8f11..ad94b92f 100644
  
          options.onCompleted && options.onCompleted();
        },
+diff --git a/wren-ui/src/utils/enum/path.ts b/wren-ui/src/utils/enum/path.ts
+index 8bc767b7..ad000e95 100644
+--- a/wren-ui/src/utils/enum/path.ts
++++ b/wren-ui/src/utils/enum/path.ts
+@@ -4,6 +4,7 @@ export enum Path {
+   Thread = '/home/[id]',
+   Modeling = '/modeling',
+   AutoMindPrediction = '/automind-prediction',
++  Guidance = '/guidance',
+   Onboarding = '/setup',
+   OnboardingConnection = '/setup/connection',
+   OnboardingModels = '/setup/models',
 diff --git a/wren-ui/src/utils/env.ts b/wren-ui/src/utils/env.ts
 index 5f405741..c798844a 100644
 --- a/wren-ui/src/utils/env.ts
@@ -1805,6 +2072,30 @@ index 00000000..bdefc923
 +};
 +exports.down = (knex) =>
 +  knex.schema.dropTableIfExists('explorer_analysis_draft');
+diff --git a/wren-ui/public/images/automind-mark.svg b/wren-ui/public/images/automind-mark.svg
+new file mode 100644
+index 00000000..1416c744
+--- /dev/null
++++ b/wren-ui/public/images/automind-mark.svg
+@@ -0,0 +1,18 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
++  <title>AutoMind</title>
++  <defs>
++    <linearGradient id="brand" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
++      <stop stop-color="#3977ff"/>
++      <stop offset="1" stop-color="#6c4de8"/>
++    </linearGradient>
++  </defs>
++  <rect width="32" height="32" rx="9" fill="url(#brand)"/>
++  <rect x=".5" y=".5" width="31" height="31" rx="8.5" stroke="white" stroke-opacity=".2"/>
++  <path d="M7 24L16 7L25 24M10.7 17H21.3M16 17V24" stroke="white" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
++  <g fill="white">
++    <circle cx="16" cy="7" r="2.2"/>
++    <circle cx="7" cy="24" r="2.2"/>
++    <circle cx="16" cy="24" r="2.2"/>
++    <circle cx="25" cy="24" r="2.2"/>
++  </g>
++</svg>
 diff --git a/wren-ui/src/apollo/server/adaptors/localDuckdbAdaptor.ts b/wren-ui/src/apollo/server/adaptors/localDuckdbAdaptor.ts
 new file mode 100644
 index 00000000..bc73fb95
@@ -2100,10 +2391,10 @@ index 00000000..bc73fb95
 +}
 diff --git a/wren-ui/src/apollo/server/services/analysisService.ts b/wren-ui/src/apollo/server/services/analysisService.ts
 new file mode 100644
-index 00000000..72c30228
+index 00000000..57119d3d
 --- /dev/null
 +++ b/wren-ui/src/apollo/server/services/analysisService.ts
-@@ -0,0 +1,628 @@
+@@ -0,0 +1,608 @@
 +import { components, serverConfig } from '@/common';
 +import { LocalDuckdbAdaptor } from '../adaptors/localDuckdbAdaptor';
 +import { explorerService, hash } from './explorerService';
@@ -2243,7 +2534,7 @@ index 00000000..72c30228
 +    id: `evidence-${i}`,
 +    title: e.title,
 +    kind: 'chartSpec',
-+    caption: `${e.definition}. ${e.scope || 'Frozen analysis scope'}. ${time ? 'Missing periods remain gaps.' : ''}`,
++    caption: `${e.metricLabel || e.title}. ${e.scope || 'Selected analysis scope'}. ${time ? 'Periods without observations remain gaps.' : 'Only the configured categories are displayed.'}`,
 +    altText: e.title,
 +    chartSpec: {
 +      data: { values: e.values },
@@ -2314,17 +2605,20 @@ index 00000000..72c30228
 +      metricDefinitions: record.context.metricDefinitions,
 +    },
 +    summary: record.result?.summary || [],
-+    findings: evidence.map((e, i) => ({
-+      id: `finding-${i}`,
-+      title: e.title,
-+      interpretation: e.definition,
-+      evidenceIds: [`evidence-${i}`],
-+    })),
++    insights: record.result?.insights,
++    findings:
++      record.result?.findings ||
++      evidence.map((e, i) => ({
++        id: `finding-${i}`,
++        title: e.title,
++        interpretation: `${e.title} compares the observed values in this saved scope. Review the displayed groups and dates before comparing totals.`,
++        evidenceIds: [`evidence-${i}`],
++      })),
 +    visuals: evidence.map(evidenceVisual),
 +    metrics: [],
 +    nextSteps: record.result?.nextChecks || [],
-+    limitations: [
-+      'This saved descriptive analysis uses frozen aggregate evidence. Its goal was not executed by an LLM.',
++    limitations: record.result?.limitations || [
++      'The comparisons describe the selected records and filters. They do not establish causes or predict future activity.',
 +    ],
 +    error: record.error,
 +  };
@@ -2644,24 +2938,9 @@ index 00000000..72c30228
 +      };
 +      Object.assign(record.report, {
 +        summary: result.summary,
++        insights: result.insights,
 +        visuals: [...evidence.map(evidenceVisual), missing],
-+        findings: evidence
-+          .map((e, i) => ({
-+            id: `finding-${i}`,
-+            title: e.title,
-+            interpretation:
-+              result.summary.find((s: string) => s.startsWith(`${e.title}:`)) ||
-+              `This chart reports ${e.definition} in its frozen ${e.scope.toLowerCase()}. Compare groups using the stated aggregation; item rows and distinct orders have different meanings.`,
-+            evidenceIds: [`evidence-${i}`],
-+          }))
-+          .concat([
-+            {
-+              id: 'quality',
-+              title: 'Data quality in this scope',
-+              interpretation: `Missingness is measured on the full selected population. ${frozen.fields.filter((f) => f.nullCount > 0).length} fields contain nulls. Zero-valued numeric measurements are retained as source values.`,
-+              evidenceIds: ['missingness'],
-+            },
-+          ]),
++        findings: result.findings,
 +        metrics: [
 +          { label: 'Rows analysed', value: frozen.rowCount },
 +          ...(frozen.metrics
@@ -2678,15 +2957,7 @@ index 00000000..72c30228
 +            : []),
 +        ],
 +        nextSteps: result.nextChecks,
-+        limitations: [
-+          'This descriptive analysis computes real SQL aggregates and rule-based explanations. The goal does not invoke an LLM or arbitrary new analysis.',
-+          'Chart definitions can use their own unfiltered scope; each chart caption records the scope.',
-+          ...(serverConfig.dataOnlyMode
-+            ? []
-+            : [
-+                'The remote source does not provide a transactional snapshot; aggregate reads may span source changes.',
-+              ]),
-+        ],
++        limitations: result.limitations,
 +      });
 +    } else {
 +      const data = await readFull(loaded, input, frozen.rowCount);
@@ -3562,10 +3833,10 @@ index 00000000..9e97497a
 +}
 diff --git a/wren-ui/src/components/analysis/AnalysisStyles.tsx b/wren-ui/src/components/analysis/AnalysisStyles.tsx
 new file mode 100644
-index 00000000..3c5f0776
+index 00000000..feca59b6
 --- /dev/null
 +++ b/wren-ui/src/components/analysis/AnalysisStyles.tsx
-@@ -0,0 +1,279 @@
+@@ -0,0 +1,308 @@
 +import styled from 'styled-components';
 +
 +export const AnalysisPage = styled.main`
@@ -3787,6 +4058,32 @@ index 00000000..3c5f0776
 +    background: #f0f5ff;
 +    border-color: #dce6fc;
 +  }
++  .key-insights {
++    margin: 24px 0;
++  }
++  .insights-grid {
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    gap: 16px;
++  }
++  .insight-card {
++    border-top: 3px solid #477dff;
++    overflow-wrap: anywhere;
++  }
++  .insight-card p {
++    margin-bottom: 12px;
++  }
++  .finding,
++  .visual {
++    scroll-margin-top: 80px;
++  }
++  details {
++    overflow-wrap: anywhere;
++    line-height: 1.7;
++  }
++  details summary {
++    cursor: pointer;
++  }
 +  .report-bottom {
 +    display: grid;
 +    grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3821,6 +4118,9 @@ index 00000000..3c5f0776
 +  }
 +  @media (max-width: 780px) {
 +    padding: 18px 16px;
++    .insights-grid {
++      grid-template-columns: minmax(0, 1fr);
++    }
 +    .steps {
 +      display: none;
 +    }
@@ -5451,6 +5751,465 @@ index 00000000..4008090f
 +      .json({ error: error.message || 'Explorer request failed' });
 +  }
 +}
+diff --git a/wren-ui/src/pages/guidance.tsx b/wren-ui/src/pages/guidance.tsx
+new file mode 100644
+index 00000000..f44ec9ef
+--- /dev/null
++++ b/wren-ui/src/pages/guidance.tsx
+@@ -0,0 +1,453 @@
++import { useEffect, useState } from 'react';
++import Head from 'next/head';
++import Link from 'next/link';
++import { Alert, Button } from 'antd';
++import ArrowRightOutlined from '@ant-design/icons/ArrowRightOutlined';
++import BarChartOutlined from '@ant-design/icons/BarChartOutlined';
++import DotChartOutlined from '@ant-design/icons/DotChartOutlined';
++import ApartmentOutlined from '@ant-design/icons/ApartmentOutlined';
++import LineChartOutlined from '@ant-design/icons/LineChartOutlined';
++import styled from 'styled-components';
++import ExplorerLayout from '@/components/explorer/ExplorerLayout';
++
++type Dataset = { id: string; name: string };
++
++const examples = [
++  {
++    task: 'Data exploration',
++    title: 'Understand your sales patterns',
++    dataset: 'WrenAI E-commerce',
++    icon: <BarChartOutlined />,
++    color: '#164dff',
++    question:
++      'When are sales strongest, and which customer states drive orders?',
++    tip: 'Explore Sales overview, narrow the date range or order status, then compare trends and regional demand.',
++  },
++  {
++    task: 'Clustering',
++    title: 'Find customer segments',
++    dataset: 'Customers',
++    icon: <DotChartOutlined />,
++    color: '#7852d8',
++    question:
++      'Which customers share similar characteristics and spending behavior?',
++    tip: 'Select Clustering and compare group sizes, age, income and spending. Start with an automatic group count.',
++  },
++  {
++    task: 'Classification',
++    title: 'Predict a category',
++    dataset: 'Heart training data',
++    icon: <ApartmentOutlined />,
++    color: '#138568',
++    question:
++      'How well can the available attributes predict the HeartDisease label?',
++    tip: 'Choose HeartDisease as the target. Use Automatic split to evaluate with labels from your training dataset.',
++  },
++  {
++    task: 'Regression',
++    title: 'Estimate willingness to share',
++    dataset: 'Edudata_English',
++    icon: <LineChartOutlined />,
++    color: '#bc6b18',
++    question:
++      'How willing are students to share their digital skills, on a scale of 1–5?',
++    tip: 'Choose “I am willing to share my digital skills with other students” as the target. Read the prediction errors alongside the survey scale.',
++  },
++];
++
++const Guide = styled.div`
++  max-width: 1232px;
++  margin: 0 auto;
++  padding: 32px 32px 40px;
++  color: #101630;
++
++  h1,
++  h2,
++  h3,
++  p {
++    margin: 0;
++  }
++  h1 {
++    font-size: 32px;
++    font-weight: 700;
++    letter-spacing: -0.8px;
++    line-height: 1.25;
++  }
++  h2 {
++    font-size: 21px;
++    font-weight: 600;
++    letter-spacing: -0.3px;
++  }
++  h3 {
++    font-size: 18px;
++    font-weight: 600;
++    line-height: 1.4;
++  }
++  p {
++    color: #5f6c88;
++    line-height: 1.65;
++  }
++  .guide-hero {
++    padding: 28px 32px;
++    border: 1px solid #dce5f8;
++    border-radius: 14px;
++    background: linear-gradient(115deg, #eef4ff, #faf8ff 80%);
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 28px;
++  }
++  .guide-eyebrow {
++    display: block;
++    margin-bottom: 10px;
++    color: #536ac9;
++    font-size: 12px;
++    font-weight: 700;
++    letter-spacing: 1.5px;
++    text-transform: uppercase;
++  }
++  .guide-hero p {
++    max-width: 600px;
++    margin-top: 12px;
++    font-size: 15px;
++  }
++  .guide-primary {
++    display: inline-flex;
++    align-items: center;
++    gap: 10px;
++    flex-shrink: 0;
++    border-radius: 7px;
++    padding: 12px 18px;
++    background: #164dff;
++    color: #fff;
++    font-weight: 500;
++  }
++  a:focus-visible {
++    outline: 2px solid #164dff;
++    outline-offset: 4px;
++  }
++  .guide-primary:hover {
++    background: #123fe0;
++    color: #fff;
++  }
++  .guide-steps {
++    display: grid;
++    grid-template-columns: repeat(3, minmax(0, 1fr));
++    gap: 24px;
++    margin: 26px 0 32px;
++  }
++  .guide-step {
++    display: flex;
++    gap: 12px;
++    align-items: flex-start;
++  }
++  .guide-step-number {
++    display: grid;
++    place-items: center;
++    width: 30px;
++    height: 30px;
++    flex-shrink: 0;
++    border-radius: 50%;
++    color: #164dff;
++    background: #eaf0ff;
++    font-weight: 600;
++  }
++  .guide-step h3 {
++    font-size: 15px;
++    margin: 3px 0 5px;
++  }
++  .guide-step p {
++    font-size: 13px;
++  }
++  .guide-section-heading {
++    margin-bottom: 18px;
++  }
++  .guide-section-heading p {
++    margin-top: 5px;
++  }
++  .guide-examples {
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    gap: 18px;
++  }
++  .guide-example {
++    display: flex;
++    flex-direction: column;
++    padding: 24px;
++    border-radius: 10px;
++    border: 1px solid #e0e7f2;
++    background: #fff;
++  }
++  .guide-example-heading {
++    display: flex;
++    align-items: center;
++    gap: 12px;
++    margin-bottom: 16px;
++  }
++  .guide-example-icon {
++    display: grid;
++    place-items: center;
++    width: 44px;
++    height: 44px;
++    flex-shrink: 0;
++    font-size: 23px;
++    background: #f4f6fc;
++    border-radius: 10px;
++  }
++  .guide-task {
++    font-size: 12px;
++    font-weight: 600;
++  }
++  .guide-example .guide-question {
++    color: #263551;
++    font-weight: 500;
++    margin-bottom: 8px;
++  }
++  .guide-example-footer {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    gap: 12px;
++    border-top: 1px solid #edf0f6;
++    padding-top: 16px;
++    margin-top: auto;
++  }
++  .guide-example-body {
++    padding-bottom: 20px;
++  }
++  .guide-dataset {
++    color: #5f6c88;
++    font-size: 13px;
++    overflow-wrap: anywhere;
++  }
++  .guide-example-footer a {
++    flex-shrink: 0;
++    color: #164dff;
++    font-weight: 500;
++  }
++  .guide-example-footer .anticon {
++    margin-left: 7px;
++  }
++  .guide-note {
++    display: flex;
++    gap: 32px;
++    border-top: 1px solid #e0e7f2;
++    padding-top: 24px;
++    margin-top: 28px;
++  }
++  .guide-note > div {
++    flex: 1;
++  }
++  .guide-note h3 {
++    font-size: 15px;
++    margin-bottom: 6px;
++  }
++  @media (max-width: 1000px) {
++    padding: 24px;
++    .guide-hero {
++      align-items: flex-start;
++      flex-direction: column;
++      padding: 24px;
++    }
++    .guide-steps {
++      gap: 16px;
++    }
++    .guide-example-footer {
++      align-items: flex-start;
++      flex-direction: column;
++    }
++  }
++  @media (max-width: 700px) {
++    padding: 20px 16px;
++    h1 {
++      font-size: 27px;
++    }
++    .guide-examples,
++    .guide-steps {
++      grid-template-columns: 1fr;
++    }
++    .guide-note {
++      flex-direction: column;
++      gap: 20px;
++    }
++  }
++`;
++
++export default function GuidancePage() {
++  const [datasets, setDatasets] = useState<Dataset[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [failed, setFailed] = useState(false);
++  const [attempt, setAttempt] = useState(0);
++
++  useEffect(() => {
++    const controller = new AbortController();
++    setLoading(true);
++    setFailed(false);
++    fetch('/api/explorer', { signal: controller.signal })
++      .then(async (response) => {
++        const result = await response.json();
++        if (!response.ok || !Array.isArray(result.datasets)) {
++          throw new Error('Dataset catalog is unavailable');
++        }
++        if (!controller.signal.aborted) setDatasets(result.datasets);
++      })
++      .catch(() => {
++        if (!controller.signal.aborted) {
++          setDatasets([]);
++          setFailed(true);
++        }
++      })
++      .finally(() => {
++        if (!controller.signal.aborted) setLoading(false);
++      });
++    return () => controller.abort();
++  }, [attempt]);
++
++  return (
++    <ExplorerLayout>
++      <Head>
++        <title>Guidance · AutoMind</title>
++      </Head>
++      <Guide>
++        <section className="guide-hero" aria-labelledby="guidance-title">
++          <div>
++            <span className="guide-eyebrow">Guidance</span>
++            <h1 id="guidance-title">From your data to useful insights</h1>
++            <p>
++              Start with a question, explore the evidence, then choose an
++              analysis. AutoMind helps you turn patterns into a report you can
++              review and revisit.
++            </p>
++          </div>
++          <Link href="/home/datasets" className="guide-primary">
++            Choose a dataset <ArrowRightOutlined />
++          </Link>
++        </section>
++
++        <section className="guide-steps" aria-label="Getting started">
++          {[
++            [
++              'Choose your data',
++              'Open a connected source or import a CSV. Check what each row represents.',
++            ],
++            [
++              'Explore the evidence',
++              'Review fields, adjust filters and customize charts in Data explorer.',
++            ],
++            [
++              'Run your analysis',
++              'Select Analyze with AutoMind, choose a task and review the report’s key insights.',
++            ],
++          ].map(([title, description], index) => (
++            <div className="guide-step" key={title}>
++              <span className="guide-step-number">{index + 1}</span>
++              <div>
++                <h3>{title}</h3>
++                <p>{description}</p>
++              </div>
++            </div>
++          ))}
++        </section>
++
++        <section aria-labelledby="examples-title">
++          <div className="guide-section-heading">
++            <h2 id="examples-title">Try a question with your data</h2>
++            <p>Four starting points, one for each analysis task.</p>
++          </div>
++          {failed && (
++            <Alert
++              type="info"
++              showIcon
++              message="Dataset availability could not be loaded. You can still open your dataset library."
++              action={
++                <Button size="small" onClick={() => setAttempt((n) => n + 1)}>
++                  Retry
++                </Button>
++              }
++              style={{ marginBottom: 18 }}
++            />
++          )}
++          <div className="guide-examples">
++            {examples.map((example) => {
++              const dataset = datasets.find(
++                (d) =>
++                  d.name.replace(/\.csv$/i, '').toLowerCase() ===
++                  example.dataset.toLowerCase(),
++              );
++              return (
++                <article className="guide-example" key={example.task}>
++                  <div className="guide-example-heading">
++                    <span
++                      className="guide-example-icon"
++                      style={{ color: example.color }}
++                    >
++                      {example.icon}
++                    </span>
++                    <div>
++                      <span
++                        className="guide-task"
++                        style={{ color: example.color }}
++                      >
++                        {example.task}
++                      </span>
++                      <h3>{example.title}</h3>
++                    </div>
++                  </div>
++                  <div className="guide-example-body">
++                    <p className="guide-question">{example.question}</p>
++                    <p>{example.tip}</p>
++                  </div>
++                  <div className="guide-example-footer">
++                    <span className="guide-dataset">{example.dataset}</span>
++                    {loading ? (
++                      <span className="guide-dataset">Checking datasets…</span>
++                    ) : (
++                      <Link
++                        href={
++                          dataset
++                            ? {
++                                pathname: '/home',
++                                query: { dataset: dataset.id },
++                              }
++                            : '/home/datasets'
++                        }
++                        aria-label={
++                          dataset
++                            ? `Explore ${example.dataset}`
++                            : `Choose a dataset for ${example.task}`
++                        }
++                      >
++                        {dataset ? 'Explore data' : 'Choose dataset'}
++                        <ArrowRightOutlined />
++                      </Link>
++                    )}
++                  </div>
++                </article>
++              );
++            })}
++          </div>
++        </section>
++
++        <aside className="guide-note" aria-label="Analysis tips">
++          <div>
++            <h3>Choose the right evaluation</h3>
++            <p>
++              Classification and regression need a target column. Automatic
++              split uses one labeled dataset; a separate test dataset needs
++              labels to measure prediction quality.
++            </p>
++          </div>
++          <div>
++            <h3>Read beyond the charts</h3>
++            <p>
++              Review Key insights first, then check the supporting charts and
++              limitations. Return to{' '}
++              <Link href="/home/analyses">Saved analyses</Link> to revisit
++              completed reports.
++            </p>
++          </div>
++        </aside>
++      </Guide>
++    </ExplorerLayout>
++  );
++}
 diff --git a/wren-ui/src/pages/home/analyses.tsx b/wren-ui/src/pages/home/analyses.tsx
 new file mode 100644
 index 00000000..af76e2c0
@@ -5540,10 +6299,10 @@ index 00000000..af76e2c0
 +}
 diff --git a/wren-ui/src/pages/home/analysis.tsx b/wren-ui/src/pages/home/analysis.tsx
 new file mode 100644
-index 00000000..ffdef3df
+index 00000000..2472f6e6
 --- /dev/null
 +++ b/wren-ui/src/pages/home/analysis.tsx
-@@ -0,0 +1,773 @@
+@@ -0,0 +1,801 @@
 +import { useEffect, useRef, useState } from 'react';
 +import { useRouter } from 'next/router';
 +import {
@@ -5748,6 +6507,16 @@ index 00000000..ffdef3df
 +      data.profile.fields.find((s) => s.name === f.name)?.nullCount <
 +        data.profile.rowCount,
 +  );
++  const unlabelledTest =
++    isSupervised &&
++    draft.evaluation === 'separate' &&
++    !!draft.target &&
++    !!testResource.data &&
++    !testResource.data.context.fields.some((f) => f.name === draft.target);
++  const useAutomaticSplit = () => {
++    setTestDataset(undefined);
++    update({ evaluation: 'automatic', test: undefined });
++  };
 +  let issue = !data.capabilities[task]
 +    ? 'This task is not connected yet. Start the analysis service and reload setup.'
 +    : !draft.goal.trim()
@@ -5783,7 +6552,7 @@ index 00000000..ffdef3df
 +    else if (
 +      !testResource.data.context.fields.some((f) => f.name === draft.target)
 +    )
-+      issue = `The test dataset has no ${draft.target} labels. It can support inference but cannot measure model quality. Use Automatic split or a labelled test dataset.`;
++      issue = `The selected test file has no recorded ${draft.target} outcomes, so it cannot measure model quality. Use an automatic split of the labelled training data, or choose a labelled test dataset.`;
 +    else
 +      issue = targetIssue(
 +        draft.target,
@@ -6023,6 +6792,24 @@ index 00000000..ffdef3df
 +                    testResource.data.context.filters.values || {},
 +                  ).join(' · ') || 'All values'}
 +                </p>
++              )}
++              {unlabelledTest && (
++                <Alert
++                  style={{ marginTop: 10 }}
++                  type="warning"
++                  showIcon
++                  message="This test file has inputs but no known outcomes"
++                  description={`It has ${testResource.data.profile.rowCount.toLocaleString()} records without '${draft.target}'. Automatic split keeps part of your labelled training data aside for evaluation, so you can run without uploading another file.`}
++                  action={
++                    <Button
++                      type="primary"
++                      disabled={running}
++                      onClick={useAutomaticSplit}
++                    >
++                      Use automatic split
++                    </Button>
++                  }
++                />
 +              )}
 +            </div>
 +          )}
@@ -6715,10 +7502,10 @@ index 00000000..f74d1bd0
 +}
 diff --git a/wren-ui/src/pages/home/report.tsx b/wren-ui/src/pages/home/report.tsx
 new file mode 100644
-index 00000000..50a8472a
+index 00000000..b2095a41
 --- /dev/null
 +++ b/wren-ui/src/pages/home/report.tsx
-@@ -0,0 +1,280 @@
+@@ -0,0 +1,326 @@
 +import { useEffect } from 'react';
 +import { useRouter } from 'next/router';
 +import { Alert, Button, Skeleton, Tag } from 'antd';
@@ -6730,6 +7517,7 @@ index 00000000..50a8472a
 +import { useExplorerResource } from '@/components/explorer/api';
 +import { RunRecord } from '@/utils/analysis/types';
 +import { taskNames } from '@/utils/analysis/config';
++import { presentReport } from '@/utils/analysis/presentation';
 +
 +export default function AnalysisReportPage() {
 +  const router = useRouter();
@@ -6744,7 +7532,7 @@ index 00000000..50a8472a
 +    return () => clearTimeout(timer);
 +  }, [resource.data]);
 +  const record = resource.data;
-+  const report = record?.report;
++  const report = record?.report ? presentReport(record.report) : undefined;
 +  return (
 +    <ExplorerLayout>
 +      <AnalysisPage>
@@ -6865,6 +7653,43 @@ index 00000000..50a8472a
 +                    </p>
 +                  ))}
 +                </section>
++                {!!report.insights?.length && (
++                  <section
++                    className="key-insights"
++                    aria-labelledby="key-insights-title"
++                  >
++                    <h2 id="key-insights-title">Key insights</h2>
++                    <p className="muted">
++                      What stands out in the selected data, and how to interpret
++                      it.
++                    </p>
++                    <div className="insights-grid">
++                      {report.insights.map((item) => {
++                        const finding = report.findings.find((f) =>
++                          f.evidenceIds.some((id) =>
++                            item.evidenceIds.includes(id),
++                          ),
++                        );
++                        const visual = report.visuals.find((v) =>
++                          item.evidenceIds.includes(v.id),
++                        );
++                        return (
++                          <article className="card insight-card" key={item.id}>
++                            <h3>{item.title}</h3>
++                            <p>{item.detail}</p>
++                            {(finding || visual) && (
++                              <a
++                                href={`#${finding ? `finding-${finding.id}` : `visual-${visual.id}`}`}
++                              >
++                                View supporting evidence →
++                              </a>
++                            )}
++                          </article>
++                        );
++                      })}
++                    </div>
++                  </section>
++                )}
 +                {report.metrics.length > 0 && (
 +                  <div className="report-metrics">
 +                    {report.metrics.map((m) => (
@@ -6874,13 +7699,18 @@ index 00000000..50a8472a
 +                          {m.value === null
 +                            ? 'Not available'
 +                            : typeof m.value === 'number'
-+                              ? m.value.toLocaleString(undefined, {
-+                                  maximumFractionDigits: Number.isInteger(
-+                                    m.value,
-+                                  )
-+                                    ? 0
-+                                    : 3,
-+                                })
++                              ? ['Accuracy', 'Macro F1'].includes(m.label)
++                                ? m.value.toLocaleString(undefined, {
++                                    style: 'percent',
++                                    maximumFractionDigits: 1,
++                                  })
++                                : m.value.toLocaleString(undefined, {
++                                    maximumFractionDigits: Number.isInteger(
++                                      m.value,
++                                    )
++                                      ? 0
++                                      : 3,
++                                  })
 +                              : m.value}
 +                        </div>
 +                      </div>
@@ -6888,7 +7718,11 @@ index 00000000..50a8472a
 +                  </div>
 +                )}
 +                {report.findings.map((f) => (
-+                  <section key={f.id} className="card finding">
++                  <section
++                    key={f.id}
++                    id={`finding-${f.id}`}
++                    className="card finding"
++                  >
 +                    <div>
 +                      {f.evidenceIds.length ? (
 +                        f.evidenceIds.map((id) => {
@@ -6919,11 +7753,6 @@ index 00000000..50a8472a
 +                    <div className="finding-interpretation">
 +                      <h2>{f.title}</h2>
 +                      <p>{f.interpretation}</p>
-+                      {report.task === 'exploration' && (
-+                        <p className="muted">
-+                          {report.scope.metricDefinitions.join(' ')}
-+                        </p>
-+                      )}
 +                    </div>
 +                  </section>
 +                ))}
@@ -6935,7 +7764,11 @@ index 00000000..50a8472a
 +                      ),
 +                  )
 +                  .map((v) => (
-+                    <section className="card finding" key={v.id}>
++                    <section
++                      className="card finding"
++                      key={v.id}
++                      id={`visual-${v.id}`}
++                    >
 +                      <ReportVisual visual={v} />
 +                      <div className="finding-interpretation">
 +                        <h2>{v.title}</h2>
@@ -6957,11 +7790,11 @@ index 00000000..50a8472a
 +                        ? `${report.evaluation.trainRows.toLocaleString()} training rows · ${report.evaluation.testRows.toLocaleString()} test rows · ${report.evaluation.selectionFolds} training selection folds`
 +                        : `${report.scope.rowCount.toLocaleString()} rows`}
 +                    </p>
-+                    <p className="muted">
-+                      Features:{' '}
++                    <details className="muted">
++                      <summary>Characteristics used in this analysis</summary>
 +                      {report.evaluation.features?.join(', ') ||
 +                        'Not available'}
-+                    </p>
++                    </details>
 +                    {report.scope.test && (
 +                      <p className="muted">
 +                        Separate test scope: {report.scope.test.ref.datasetId} /{' '}
@@ -7361,12 +8194,186 @@ index 00000000..71fcf6aa
 +    includeCharts: input.config.includeCharts ?? true,
 +  };
 +}
+diff --git a/wren-ui/src/utils/analysis/presentation.test.ts b/wren-ui/src/utils/analysis/presentation.test.ts
+new file mode 100644
+index 00000000..581026de
+--- /dev/null
++++ b/wren-ui/src/utils/analysis/presentation.test.ts
+@@ -0,0 +1,78 @@
++import { presentReport } from './presentation';
++import { visualIssue } from './visual';
++import { AnalysisReport, ReportVisual } from './types';
++
++test('saved evidence stays immutable while implementation notes and SQL are removed from display', () => {
++  const report = {
++    task: 'exploration',
++    scope: { ref: { viewId: 'sales' } },
++    summary: [
++      'Item sales = SUM(item_price); Orders = COUNT(DISTINCT order_id).',
++    ],
++    findings: [
++      {
++        id: 'sales',
++        title: 'Sales',
++        interpretation: 'Observed sales: 120.',
++        evidenceIds: ['sales'],
++      },
++    ],
++    visuals: [
++      {
++        id: 'sales',
++        caption: 'sum(item_price) grouped by month',
++        chartSpec: { data: { values: [{ value: 120 }] } },
++      },
++    ],
++    limitations: [
++      'This descriptive analysis computes real SQL aggregates and rule-based explanations. The goal does not invoke an LLM or arbitrary new analysis.',
++    ],
++  } as unknown as AnalysisReport;
++  const before = JSON.stringify(report);
++  const display = presentReport(report);
++  expect(JSON.stringify(report)).toBe(before);
++  expect(display.visuals[0].chartSpec).toBe(report.visuals[0].chartSpec);
++  expect(display.insights[0].detail).toContain('120');
++  expect(
++    JSON.stringify([
++      display.summary,
++      display.limitations,
++      display.visuals[0].caption,
++    ]),
++  ).not.toMatch(/SUM\(|COUNT\(|LLM|rule-based/i);
++  expect(display.limitations.join(' ')).toContain('freight');
++});
++
++test('boxplots accept inline values but cannot fetch data or inject expressions', () => {
++  const visual: ReportVisual = {
++    id: 'spread',
++    title: 'Spread',
++    kind: 'chartSpec',
++    caption: 'Original units',
++    altText: 'Spread',
++    chartSpec: {
++      data: { values: [{ group: 'A', value: 10 }] },
++      mark: { type: 'boxplot', extent: 1.5 },
++      encoding: { x: { field: 'group' }, y: { field: 'value' } },
++    },
++  };
++  expect(visualIssue(visual)).toBeUndefined();
++  expect(
++    visualIssue({
++      ...visual,
++      chartSpec: {
++        ...visual.chartSpec,
++        data: { values: [], url: 'https://example.com/data' },
++      },
++    }),
++  ).toBeDefined();
++  expect(
++    visualIssue({
++      ...visual,
++      chartSpec: {
++        ...visual.chartSpec,
++        encoding: { y: { field: 'value', scale: { domain: { expr: '1+1' } } } },
++      },
++    }),
++  ).toBeDefined();
++});
+diff --git a/wren-ui/src/utils/analysis/presentation.ts b/wren-ui/src/utils/analysis/presentation.ts
+new file mode 100644
+index 00000000..4e13a80f
+--- /dev/null
++++ b/wren-ui/src/utils/analysis/presentation.ts
+@@ -0,0 +1,84 @@
++import { AnalysisReport } from './types';
++
++const implementationNote =
++  /rule-based explanations|goal does not invoke an LLM|not the full AutoMind paper|existing ML stack|goal was not executed by an LLM|Chart definitions can use their own unfiltered scope/i;
++
++function readable(text: string) {
++  return text
++    .replace(/sum of item price/gi, 'Item sales (price units)')
++    .replace(/count distinct of order id/gi, 'Distinct orders')
++    .replace(
++      /Item sales = SUM\(item_price\)/gi,
++      'Item sales total the item prices',
++    )
++    .replace(
++      /Orders = COUNT\(DISTINCT order_id\)/gi,
++      'Each order is counted once',
++    )
++    .replace(
++      /Row key = \(order_id, order_item_id\)\.?/gi,
++      'Each row is one order item.',
++    )
++    .replace(
++      /\b(count_distinct|sum|mean|count)\(([^)]+)\)/gi,
++      (_, aggregation, field) =>
++        `${aggregation === 'count_distinct' ? 'Distinct count of' : aggregation === 'sum' ? 'Total' : aggregation === 'mean' ? 'Average' : 'Count of'} ${field.replace(/_/g, ' ')}`,
++    )
++    .replace(/\b\d+(?:\.\d+)?e[+-]\d+\b/gi, (value) =>
++      Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 }),
++    );
++}
++
++/** Improve the display of saved reports without rewriting their frozen evidence. */
++export function presentReport(report: AnalysisReport): AnalysisReport {
++  const findings = report.findings.map((finding) => ({
++    ...finding,
++    interpretation: readable(finding.interpretation),
++  }));
++  const limitations = report.limitations.filter(
++    (text) => !implementationNote.test(text),
++  );
++  if (!limitations.length) {
++    if (report.task === 'exploration') {
++      limitations.push(
++        'These findings describe the selected records and filters. They do not establish causes or guarantee that a trend will continue.',
++      );
++      if (report.scope.ref.viewId === 'sales')
++        limitations.push(
++          'Item prices exclude freight and do not measure profit. An order can contain several items, so item counts and distinct order counts have different meanings.',
++        );
++    } else if (report.task === 'clustering') {
++      limitations.push(
++        'Group profiles depend on the selected characteristics. The two-dimensional display may conceal overlap in other characteristics; check distributions and stability in another sample before acting on the segments.',
++      );
++    } else {
++      limitations.push(
++        'Evaluation describes held-out records from the selected population. Performance for another cohort or a changed target distribution remains unmeasured.',
++      );
++    }
++  }
++  const insights = report.insights?.length
++    ? report.insights
++    : findings.slice(0, 4).map((finding) => ({
++        id: finding.id,
++        title: finding.title,
++        detail: finding.interpretation,
++        evidenceIds: finding.evidenceIds,
++      }));
++  return {
++    ...report,
++    summary: report.summary
++      .filter((text) => !implementationNote.test(text))
++      .map(readable),
++    findings,
++    insights: insights.map((item) => ({
++      ...item,
++      detail: readable(item.detail),
++    })),
++    limitations,
++    visuals: report.visuals.map((visual) => ({
++      ...visual,
++      caption: readable(visual.caption),
++    })),
++  };
++}
 diff --git a/wren-ui/src/utils/analysis/types.ts b/wren-ui/src/utils/analysis/types.ts
 new file mode 100644
-index 00000000..c729f51c
+index 00000000..f906090e
 --- /dev/null
 +++ b/wren-ui/src/utils/analysis/types.ts
-@@ -0,0 +1,107 @@
+@@ -0,0 +1,113 @@
 +import {
 +  ChartDefinition,
 +  ExplorerContext,
@@ -7442,6 +8449,12 @@ index 00000000..c729f51c
 +    rowGrain: string;
 +  };
 +  summary: string[];
++  insights?: {
++    id: string;
++    title: string;
++    detail: string;
++    evidenceIds: string[];
++  }[];
 +  findings: {
 +    id: string;
 +    title: string;
@@ -7476,7 +8489,7 @@ index 00000000..c729f51c
 +}
 diff --git a/wren-ui/src/utils/analysis/visual.ts b/wren-ui/src/utils/analysis/visual.ts
 new file mode 100644
-index 00000000..70207cc0
+index 00000000..76dc6573
 --- /dev/null
 +++ b/wren-ui/src/utils/analysis/visual.ts
 @@ -0,0 +1,45 @@
@@ -7503,7 +8516,7 @@ index 00000000..70207cc0
 +  )
 +    return 'This chart specification is unsupported.';
 +  const mark = typeof spec.mark === 'string' ? spec.mark : spec.mark.type;
-+  if (!['bar', 'line', 'area', 'point', 'rect'].includes(mark))
++  if (!['bar', 'line', 'area', 'point', 'rect', 'boxplot'].includes(mark))
 +    return 'This chart mark is unsupported.';
 +  const unsafe = (value: any): boolean =>
 +    value &&
@@ -7858,10 +8871,10 @@ index 00000000..49e8ccef
 +}
 diff --git a/wren-ui/src/utils/explorer/types.ts b/wren-ui/src/utils/explorer/types.ts
 new file mode 100644
-index 00000000..d77dd8c8
+index 00000000..76183574
 --- /dev/null
 +++ b/wren-ui/src/utils/explorer/types.ts
-@@ -0,0 +1,84 @@
+@@ -0,0 +1,97 @@
 +export type FieldRole = 'date' | 'identifier' | 'number' | 'category' | 'other';
 +export interface ExplorerField {
 +  name: string;
@@ -7941,6 +8954,19 @@ index 00000000..d77dd8c8
 +      definition: string;
 +      values: ChartResult['values'];
 +    }[];
++    insights?: {
++      id: string;
++      title: string;
++      detail: string;
++      evidenceIds: string[];
++    }[];
++    findings?: {
++      id: string;
++      title: string;
++      interpretation: string;
++      evidenceIds: string[];
++    }[];
++    limitations?: string[];
 +    nextChecks: string[];
 +    technical: Record<string, unknown>;
 +  };

@@ -19,6 +19,8 @@ from sklearn.pipeline import Pipeline
 
 from app.services.modeling import _classification_candidates, _regression_candidates
 from app.services.preprocessing import prepare_features
+from app.services.report_insights import number, supervised_insights
+from app.services.cluster_insights import cluster_report
 
 
 class TaskRequest(BaseModel):
@@ -113,18 +115,30 @@ def _split(request, df, y):
     strategy = request.split
     ids = [f["name"] for f in request.fields if f.get("role") == "identifier" and f["name"] in df]
     repeated = [c for c in ids if 2 <= df[c].nunique() < len(df) and not df[c].isna().any()]
+    # Identical response/measurement patterns must not occur on both sides of
+    # an automatic split. Dates and identifiers are not predictive measurements.
+    pattern_columns = [f['name'] for f in request.fields if f.get('role') not in ('identifier', 'date', 'other')
+                       and f['name'] in df and f['name'].strip().lower() not in ('timestamp', 'submission time', 'submitted at')]
+    patterns = pd.util.hash_pandas_object(df[pattern_columns], index=False).astype(str) if pattern_columns else None
+    repeated_patterns = patterns is not None and patterns.duplicated().any() and patterns.nunique() >= 5
+    pattern_groups = False
     if strategy == "auto":
         future_goal = any(word in request.goal.lower() for word in ("future", "next period", "next month", "forecast"))
         if future_goal and not request.dateColumn:
             raise ValueError("A future-period prediction goal requires a dated view and time-based evaluation. Choose a compatible view or revise the goal.")
-        strategy = "time" if future_goal else "group" if repeated else "random"
+        strategy = "time" if future_goal else "group" if repeated or repeated_patterns else "random"
+        pattern_groups = strategy == "group" and not repeated and repeated_patterns
     groups = None
     group_column = request.groupColumn
     if strategy == "group":
         group_column = group_column or (repeated[0] if repeated else None)
-        if not group_column or group_column not in df or df[group_column].isna().any():
+        if pattern_groups:
+            groups = patterns
+            group_column = "Repeated response pattern"
+        elif not group_column or group_column not in df or df[group_column].isna().any():
             raise ValueError("Choose a non-null entity/group column for group-aware evaluation.")
-        groups = df[group_column].astype(str)
+        else:
+            groups = df[group_column].astype(str)
         if groups.nunique() < 5:
             raise ValueError("Group-aware evaluation requires at least five independent groups.")
     if strategy == "time":
@@ -145,8 +159,8 @@ def _split(request, df, y):
     elif strategy == "group":
         train, test = next(GroupShuffleSplit(n_splits=1, test_size=.25, random_state=42).split(df, y, groups))
     else:
-        if request.split == "random" and repeated:
-            raise ValueError("Repeated entity IDs require group-aware evaluation; use Automatic strategy or Group-aware.")
+        if request.split == "random" and (repeated or repeated_patterns):
+            raise ValueError("Repeated entities or response patterns require group-aware evaluation; use Automatic strategy.")
         stratify = y if request.task == "classification" else None
         train, test = train_test_split(np.arange(len(df)), test_size=.25, random_state=42, stratify=stratify)
     return np.array(train), np.array(test), strategy, groups, group_column
@@ -272,12 +286,22 @@ def analyze_task(request: TaskRequest):
         visuals.append(visual("residuals", "Prediction residuals", values, {"type": "point", "opacity": .55}, {"x": {"field": "predicted", "type": "quantitative"}, "y": {"field": "residual", "type": "quantitative"}}, "Residual = actual minus predicted; inspect systematic error and changing spread."))
         interpretation = f"{best[1]} was selected using training-only RMSE. Final holdout RMSE is {metrics[1]['value']:.3f} in target units; R² is {metrics[2]['value']:.3f}. These are evaluation scores, not forecasting guarantees."
     features = pipeline.named_steps["preprocessor"].columns_
+    insights, interpretation, extra_findings, limitations = supervised_insights(request.task, request.target, ytrain, ytest, prediction, features, df, Xtrain)
+    if request.task == "regression":
+        observed = np.asarray(ytest, dtype=float)
+        if 3 <= len(np.unique(observed)) <= 10 and np.all(observed == np.floor(observed)):
+            counts = [{"label": number(v), "value": int(np.sum(observed == v))} for v in sorted(np.unique(observed))]
+            visuals.append(bar("target-distribution", "Observed score distribution", counts, f"All {len(ytest):,} evaluation responses, grouped by the recorded score. Counts show which response levels have the most evaluation evidence."))
+            population = pd.to_numeric(df[request.target])
+            counts = [{"label": number(v), "value": int(population.eq(v).sum())} for v in sorted(population.unique())]
+            visuals.append(bar("population-target", "Recorded scores across the selected dataset", counts, f"All {len(df):,} selected records. This describes the source distribution; the separate evaluation distribution describes only held-out records."))
     return {
-        "summary": [f"Evaluated {request.target} with {best[1]}.", f"{len(Xtrain):,} training rows; {len(Xtest):,} final evaluation rows; {strategy} strategy."],
-        "findings": [{"id": "performance", "title": "Independent evaluation", "interpretation": interpretation, "evidenceIds": [visuals[0]["id"]]}, {"id": "selection", "title": "How the model was selected", "interpretation": f"Candidate selection used {len(folds)} folds within training data. Imputation, encoding, scaling and feature selection were fitted in each training fold. The selected model was refitted on training rows before final evaluation.", "evidenceIds": ["model-selection"]}],
+        "summary": [f"Evaluated '{request.target}' using {len(Xtest):,} records kept separate from {len(Xtrain):,} training records.", f"{best[1]} was selected from the training comparisons. " + (f"The independent evaluation correctly classified {float(metrics[0]['value']):.1%} of records. Read class-level errors alongside the overall score." if request.task == 'classification' else f"The typical absolute error is {number(metrics[0]['value'])} target units. Read this error alongside the target distribution and the unusually large errors below.")],
+        "insights": insights,
+        "findings": [{"id": "performance", "title": "Independent evaluation", "interpretation": interpretation, "evidenceIds": [visuals[0]["id"]]}, *extra_findings, {"id": "selection", "title": "Model comparison before final evaluation", "interpretation": f"{best[1]} was chosen using {selection_metric} across {len(folds)} training folds. The bars describe consistency within training data, while the independent evaluation describes errors on held-out records. A strong training score is useful only when the independent errors are also acceptable for the stated goal.", "evidenceIds": ["model-selection"]}],
         "visuals": visuals, "metrics": metrics,
-        "nextSteps": ["Check errors against the business goal and the cost of wrong predictions.", "Validate on independent data before using the model for decisions."],
-        "limitations": ["This is a bounded AutoMind-style pipeline using the existing scikit-learn candidate models, not the complete AutoMind paper implementation.", "Available columns may include outcome leakage. Review whether features were known at prediction time."] + pipeline.named_steps["preprocessor"].warnings_,
+        "nextSteps": (["Review the class with the lowest recall and inspect its missed and wrongly assigned records.", "Decide how false positives and false negatives should be weighed for this task."] if request.task == 'classification' else [f"Choose an acceptable error in units of '{request.target}' and review predictions outside that tolerance.", "Compare errors at low and high target values; collect more examples where responses are rare."]) + ["Validate on a different cohort or collection period, using inputs available before the outcome."],
+        "limitations": limitations,
         "evaluation": {"mode": request.evaluation, "strategy": strategy, "groupColumn": group_column, "trainRows": len(Xtrain), "testRows": len(Xtest), "selectionFolds": len(folds), "selectionMetric": selection_metric, "finalEvaluation": evaluation_label, "features": features, "seed": 42},
     }
 
@@ -311,32 +335,4 @@ def _clustering(request, df, excludes):
         shown = np.random.default_rng(42).choice(len(X), min(len(X), 1500), replace=False)
         values = [{"x": float(projection[i, 0]), "y": float(projection[i, 1]), "group": f"Group {model.labels_[i]+1}"} for i in shown]
         visuals.append(visual("projection", "Groups in a two-dimensional projection", values, {"type": "point", "opacity": .5}, {"x": {"field": "x", "type": "quantitative", "title": "Principal component 1"}, "y": {"field": "y", "type": "quantitative", "title": "Principal component 2"}, "color": {"field": "group", "type": "nominal"}}, f"PCA of the imputed, scaled and encoded features; {sum(pca.explained_variance_ratio_):.1%} explained variance. Showing {len(shown):,} of {len(X):,} rows with seeded display sampling; clustering uses all rows."))
-    numeric = [c for c in prep.columns_ if pd.api.types.is_numeric_dtype(df[c])][:8]
-    profile_description = "Compare groups using the available projection."
-    if numeric:
-        values = []
-        for c in numeric:
-            std = df[c].std()
-            for k in range(model.n_clusters):
-                mean = df.loc[model.labels_ == k, c].mean()
-                if pd.notna(mean) and std > 0:
-                    values.append({"field": c, "group": f"Group {k+1}", "mean": float(mean), "difference": float((mean-df[c].mean())/std)})
-        if values:
-            contrasts = []
-            for c in numeric:
-                observed = [v for v in values if v["field"] == c]
-                if len(observed) >= 2:
-                    low, high = min(observed, key=lambda v: v["mean"]), max(observed, key=lambda v: v["mean"])
-                    contrasts.append((high["difference"] - low["difference"], f"{c}: {low['group']} mean {low['mean']:.3g} versus {high['group']} mean {high['mean']:.3g}"))
-            if contrasts:
-                profile_description = "Largest differences among the displayed numerical attributes: " + "; ".join(text for _, text in sorted(contrasts, reverse=True)[:2]) + ". These are descriptive contrasts, not causes."
-            visuals.append(visual("cluster-profiles", "Numeric group profiles", values, "rect", {"x": {"field": "field", "type": "nominal"}, "y": {"field": "group", "type": "nominal"}, "color": {"field": "difference", "type": "quantitative", "scale": {"scheme": "redblue", "domainMid": 0}}, "tooltip": [{"field": "field"}, {"field": "group"}, {"field": "mean", "type": "quantitative"}, {"field": "difference", "type": "quantitative"}]}, "Up to eight numeric attributes; group means relative to the overall mean, in standard deviations. Missing raw values are excluded from each mean. Descriptive differences do not establish causes."))
-    size_description = "; ".join(f"{s['label']}: {s['value']:,} rows ({s['value']/len(df):.1%})" for s in sizes)
-    return {
-        "summary": [f"Found {model.n_clusters} groups across {len(df):,} rows.", f"Silhouette score: {score:.3f}; features: {', '.join(prep.columns_)}."],
-        "findings": [{"id": "groups", "title": "Groups describe this selected population", "interpretation": f"{size_description}. Each row represents {request.rowGrain}. Silhouette ({score:.3f}) measures separation in the encoded feature space; it is not prediction accuracy or proof of meaningful business segments.", "evidenceIds": ["cluster-sizes"]}, {"id": "profiles", "title": "Interpret groups using their observed characteristics", "interpretation": profile_description + " PCA is a lossy display; group membership was computed in the full preprocessed feature space.", "evidenceIds": [v["id"] for v in visuals[1:]]}],
-        "visuals": visuals, "metrics": [{"label": "Groups", "value": model.n_clusters}, {"label": "Silhouette", "value": score}],
-        "nextSteps": ["Check whether group differences are useful for the analysis goal.", "Check stability on another period or population before naming segments."],
-        "limitations": ["K-means uses imputation, scaling and one-hot encoding; this distance may not match domain similarity.", "Auto chooses 2–6 groups by silhouette on this population; no independent stability validation is claimed.", "This uses the existing ML stack and is not the full AutoMind paper implementation."],
-        "evaluation": {"features": prep.columns_, "clusters": model.n_clusters, "method": "K-means", "seed": 42},
-    }
+    return cluster_report(request, df, prep, score, model, visuals, visual)
